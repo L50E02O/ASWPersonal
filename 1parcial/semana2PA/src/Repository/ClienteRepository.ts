@@ -1,6 +1,7 @@
 import ICliente from "../domain/ICliente";
 import { registroClientes } from "./registrosClientes";
 
+// Hecho por Neysser Delgado
 export class ClienteRepository {
     // registroClientes es una lista que contiene los 10 registros de Clientes
     private clientes: Array<ICliente> = registroClientes;
