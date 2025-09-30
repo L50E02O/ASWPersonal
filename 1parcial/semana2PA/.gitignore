@@ -1,0 +1,10 @@
+# Dependencias
+node_modules/
+
+# Build / compilados
+dist/
+build/
+
+# Archivos temporales
+*.log
+.env
