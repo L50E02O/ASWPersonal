@@ -1,5 +1,5 @@
 import IValoracion from "../domain/IValoracion";
-
+// Hecho por Leo Holguin
 export const registroValoraciones: IValoracion[] = [
     {
         id_valoracion: "1",

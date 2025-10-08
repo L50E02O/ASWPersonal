@@ -1,4 +1,5 @@
 import ICliente from "../domain/ICliente";
+// Hecho por Neysser Delgado
 export const registroClientes: ICliente[] = [
     {
         id_cliente: "C0001",

@@ -1,6 +1,7 @@
 import ICliente from "../domain/ICliente";
 import { ClienteRepository } from "../Repository/ClienteRepository";
 
+// Hecho por Neysser Delgado
 export class ServicioCliente {
     private repo: ClienteRepository;
 

@@ -1,7 +1,8 @@
 // hecho por Derlis
 import type IVerificacion from "../domain/IVerificacion";
+import { registroVerificaciones } from "../Repository/registrosVerificacion";
 
-const verificaciones: IVerificacion[] = [];
+const verificaciones: IVerificacion[] = registroVerificaciones;
 
 export class ServicioVerificacion {
     constructor() {
