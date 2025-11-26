@@ -1,17 +1,22 @@
 {
   "name": "semana2ts",
   "version": "1.0.0",
-  "description": "",
+  "description": "Aplicación de conferencias con TypeORM",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-      "dev": "tsnd --respawn --clear src/app.ts",
+    "dev": "tsnd --respawn --clear src/app.ts",
     "build": "rimraf ./dist && tsc",
     "start": "npm run build && node dist/app.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "dependencies": {
+    "typeorm": "^0.3.20",
+    "reflect-metadata": "^0.2.2",
+    "sqlite3": "^5.1.7"
+  },
   "devDependencies": {
     "@types/node": "^24.5.2",
     "rimraf": "^6.0.1",

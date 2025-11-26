@@ -1,0 +1,22 @@
+{
+  "name": "dominio",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "typeorm": "^0.3.27",
+    "reflect-metadata": "^0.2.2",
+    "class-validator": "^0.14.0",
+    "class-transformer": "^0.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
