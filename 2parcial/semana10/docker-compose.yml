@@ -50,7 +50,7 @@ services:
     volumes:
       - postgres_arquitecto_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U arquitecto_user"]
+      test: ["CMD-SHELL", "pg_isready -U arquitecto_user -d arquitecto_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -70,7 +70,7 @@ services:
     volumes:
       - postgres_verificacion_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U verificacion_user"]
+      test: ["CMD-SHELL", "pg_isready -U verificacion_user -d verificacion_db"]
       interval: 10s
       timeout: 5s
       retries: 5

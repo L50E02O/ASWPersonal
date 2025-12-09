@@ -8,8 +8,8 @@ import * as amqp from 'amqplib';
  */
 @Injectable()
 export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
-  private connection: amqp.Connection;
-  private channel: amqp.Channel;
+  private connection: amqp.ChannelModel | null = null;
+  private channel: amqp.Channel | null = null;
   private client: ClientProxy;
   private readonly logger = new Logger(RabbitMQService.name);
   private readonly exchange = process.env.RABBITMQ_EXCHANGE || 'arquitecto.exchange';
@@ -67,6 +67,10 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
    * @param payload - Datos del evento
    */
   async publishEvent(routingKey: string, payload: any): Promise<void> {
+    if (!this.channel) {
+      throw new Error('Canal de RabbitMQ no está inicializado');
+    }
+
     try {
       const message = JSON.stringify(payload);
       const published = this.channel.publish(
@@ -96,6 +100,10 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
    * @param data - Datos del mensaje
    */
   async sendMessage(pattern: string, data: any): Promise<any> {
+    if (!this.client) {
+      throw new Error('Cliente de RabbitMQ no está inicializado');
+    }
+
     try {
       return await this.client.send(pattern, data).toPromise();
     } catch (error) {
