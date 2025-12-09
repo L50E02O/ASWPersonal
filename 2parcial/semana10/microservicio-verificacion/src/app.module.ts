@@ -1,0 +1,29 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { VerificacionModule } from './verificacion/verificacion.module';
+import { RabbitMQModule } from './rabbitmq/rabbitmq.module';
+import { RedisModule } from './redis/redis.module';
+
+/**
+ * Módulo principal del microservicio de Verificación
+ */
+@Module({
+  imports: [
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5434'),
+      username: process.env.DB_USERNAME || 'verificacion_user',
+      password: process.env.DB_PASSWORD || 'verificacion_pass',
+      database: process.env.DB_DATABASE || 'verificacion_db',
+      entities: [__dirname + '/**/*.entity{.ts,.js}'],
+      synchronize: false, // Usar migraciones en producción
+      logging: process.env.NODE_ENV === 'development',
+    }),
+    VerificacionModule,
+    RabbitMQModule,
+    RedisModule,
+  ],
+})
+export class AppModule {}
+
