@@ -58,10 +58,8 @@ semana10/
 │   ├── package.json
 │   └── tsconfig.json
 │
-├── scripts/                       # Scripts de prueba
-│   ├── test-idempotencia.sh
-│   ├── test-duplicacion-mensajes.sh
-│   └── test-comunicacion-microservicios.sh
+├── scripts/                       # Scripts de verificación
+│   └── verificar-requisitos.js    # Verifica cumplimiento de requisitos
 │
 ├── docker-compose.yml             # Orquestación de servicios
 ├── README.md                      # Documentación principal

@@ -150,17 +150,12 @@ docker exec -it redis-semana10 redis-cli
 KEYS idempotency:*
 ```
 
-### 3. Ejecutar Scripts de Prueba
+### 3. Verificar Requisitos
 
 ```bash
-# Hacer ejecutables los scripts
-chmod +x semana10/scripts/*.sh
-
-# Prueba de Idempotencia
-./semana10/scripts/test-idempotencia.sh
-
-# Prueba de Comunicación entre Microservicios
-./semana10/scripts/test-comunicacion-microservicios.sh
+# Verificar que el proyecto cumple con todos los requisitos
+cd semana10
+node scripts/verificar-requisitos.js
 ```
 
 ## Solución de Problemas

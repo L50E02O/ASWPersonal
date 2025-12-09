@@ -130,38 +130,91 @@ npm run start:dev
 
 ### Prueba 1: Idempotencia
 
-Ejecutar el script de prueba:
-
+**Paso 1:** Crear un arquitecto:
 ```bash
-chmod +x scripts/test-idempotencia.sh
-./scripts/test-idempotencia.sh
+curl -X POST http://localhost:3000/arquitectos \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cedula": "12345678",
+    "descripcion": "Arquitecto de prueba",
+    "especialidades": "Diseño residencial",
+    "ubicacion": "Bogotá",
+    "usuario_id": "00000000-0000-0000-0000-000000000001"
+  }'
 ```
 
-Este script:
-1. Crea un arquitecto
-2. Envía la misma solicitud de verificación 3 veces con la misma clave de idempotencia
-3. Verifica que solo se creó una verificación
-
-### Prueba 2: Duplicación de Mensajes
-
+**Paso 2:** Guardar el ID del arquitecto y crear una verificación con idempotency_key:
 ```bash
-chmod +x scripts/test-duplicacion-mensajes.sh
-./scripts/test-duplicacion-mensajes.sh
+ARQUITECTO_ID="<ID_DEL_ARQUITECTO>"
+IDEMPOTENCY_KEY="test-$(date +%s)"
+
+curl -X POST http://localhost:3000/verificaciones \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"arquitecto_id\": \"$ARQUITECTO_ID\",
+    \"moderador_id\": \"00000000-0000-0000-0000-000000000002\",
+    \"estado\": \"pendiente\",
+    \"idempotency_key\": \"$IDEMPOTENCY_KEY\"
+  }"
 ```
 
-Este script simula el escenario donde un mensaje RabbitMQ se duplica antes del ACK.
-
-### Prueba 3: Comunicación entre Microservicios
-
+**Paso 3:** Enviar la misma solicitud 3 veces más:
 ```bash
-chmod +x scripts/test-comunicacion-microservicios.sh
-./scripts/test-comunicacion-microservicios.sh
+for i in {1..3}; do
+  curl -X POST http://localhost:3000/verificaciones \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"arquitecto_id\": \"$ARQUITECTO_ID\",
+      \"moderador_id\": \"00000000-0000-0000-0000-000000000002\",
+      \"estado\": \"pendiente\",
+      \"idempotency_key\": \"$IDEMPOTENCY_KEY\"
+    }"
+done
 ```
 
-Este script verifica:
-1. Creación de arquitecto en Microservicio A
-2. Verificación de existencia vía RabbitMQ desde Microservicio B
-3. Notificación de verificación completada a Microservicio A
+**Paso 4:** Verificar en Redis que la clave existe:
+```bash
+docker exec -it redis-semana10 redis-cli
+KEYS idempotency:*
+GET idempotency:test-*
+```
+
+**Paso 5:** Verificar en la base de datos que solo hay una verificación:
+```bash
+docker exec -it postgres-verificacion-semana10 psql -U verificacion_user -d verificacion_db
+SELECT COUNT(*) FROM verificaciones WHERE arquitecto_id = '<ID_DEL_ARQUITECTO>';
+```
+
+### Prueba 2: Comunicación entre Microservicios
+
+**Paso 1:** Crear un arquitecto (Microservicio A):
+```bash
+curl -X POST http://localhost:3000/arquitectos \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cedula": "87654321",
+    "descripcion": "Arquitecto para prueba de comunicación",
+    "especialidades": "Diseño comercial",
+    "ubicacion": "Medellín",
+    "usuario_id": "00000000-0000-0000-0000-000000000003"
+  }'
+```
+
+**Paso 2:** Crear una verificación (Microservicio B se comunica con A vía RabbitMQ):
+```bash
+ARQUITECTO_ID="<ID_DEL_ARQUITECTO>"
+curl -X POST http://localhost:3000/verificaciones \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"arquitecto_id\": \"$ARQUITECTO_ID\",
+    \"moderador_id\": \"00000000-0000-0000-0000-000000000002\",
+    \"estado\": \"pendiente\"
+  }"
+```
+
+**Paso 3:** Verificar en RabbitMQ Management (http://localhost:15672) que hay mensajes en las colas:
+- `arquitecto.queue` - Mensajes de verificación de existencia
+- `verificacion.queue` - Mensajes de creación de verificación
 
 ## Endpoints API Gateway
 

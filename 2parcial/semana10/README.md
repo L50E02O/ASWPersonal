@@ -125,13 +125,11 @@ cd microservicio-verificacion && npm run start:dev
 - **[GUIA_IMPLEMENTACION.md](./GUIA_IMPLEMENTACION.md)** - Documentación detallada de la implementación
 - **[ESTRUCTURA_PROYECTO.md](./ESTRUCTURA_PROYECTO.md)** - Descripción de la estructura del proyecto
 
-## Scripts de Prueba
+## Scripts de Verificación
 
-Los scripts de prueba se encuentran en la carpeta `scripts/`:
+Los scripts de verificación se encuentran en la carpeta `scripts/`:
 
-- `test-idempotencia.sh` - Prueba el consumidor idempotente
-- `test-duplicacion-mensajes.sh` - Simula duplicación de mensajes RabbitMQ
-- `test-comunicacion-microservicios.sh` - Verifica comunicación entre microservicios
+- `verificar-requisitos.js` - Verifica que el proyecto cumpla con todos los requisitos de arquitectura
 
 ## Arquitectura Implementada
 
