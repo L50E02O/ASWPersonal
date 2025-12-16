@@ -74,7 +74,29 @@ export class VerificacionService {
       fecha_verificacion: new Date(),
     });
 
-    const saved = await this.verificacionRepository.save(verificacion);
+    let saved: Verificacion;
+    try {
+      saved = await this.verificacionRepository.save(verificacion);
+    } catch (error: any) {
+      // Manejar condición de carrera: si otro proceso creó la verificación simultáneamente
+      if (error.code === '23505' || error.message?.includes('duplicate key') || error.message?.includes('unique constraint')) {
+        this.logger.warn(`Verificación duplicada detectada para arquitecto ${arquitecto_id} (condición de carrera). Recuperando registro existente.`);
+        // Intentar obtener el registro que se creó en el otro proceso
+        const existingAfterRace = await this.verificacionRepository.findOne({
+          where: { arquitecto_id },
+        });
+        if (existingAfterRace) {
+          await this.redisService.saveIdempotency(idempotency_key, existingAfterRace);
+          return existingAfterRace;
+        }
+        // Si no se encuentra, lanzar el error original
+        throw new BadRequestException(
+          `Ya existe una verificación para el arquitecto ${arquitecto_id}`,
+        );
+      }
+      // Si es otro tipo de error, relanzarlo
+      throw error;
+    }
 
     // Guardar clave de idempotencia
     await this.redisService.saveIdempotency(idempotency_key, saved);
@@ -242,7 +264,25 @@ export class VerificacionService {
       fecha_verificacion: new Date(),
     });
 
-    const saved = await this.verificacionRepository.save(verificacion);
+    let saved: Verificacion;
+    try {
+      saved = await this.verificacionRepository.save(verificacion);
+    } catch (error: any) {
+      // Manejar condición de carrera: si otro proceso creó la verificación simultáneamente
+      if (error.code === '23505' || error.message?.includes('duplicate key') || error.message?.includes('unique constraint')) {
+        this.logger.warn(`Verificación duplicada detectada para arquitecto ${arquitecto_id} (condición de carrera). Recuperando registro existente.`);
+        // Intentar obtener el registro que se creó en el otro proceso
+        const existingAfterRace = await this.verificacionRepository.findOne({
+          where: { arquitecto_id },
+        });
+        if (existingAfterRace) {
+          await this.redisService.saveIdempotency(idempotency_key, existingAfterRace);
+          return existingAfterRace;
+        }
+      }
+      // Si es otro tipo de error, relanzarlo
+      throw error;
+    }
 
     // Guardar clave de idempotencia
     await this.redisService.saveIdempotency(idempotency_key, saved);
