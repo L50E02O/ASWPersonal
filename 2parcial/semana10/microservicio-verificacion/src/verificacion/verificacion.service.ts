@@ -178,5 +178,60 @@ export class VerificacionService {
       where: { arquitecto_id },
     });
   }
+
+  /**
+   * Crea automáticamente una verificación cuando se crea un arquitecto
+   * Este método es llamado por el evento 'arquitecto.creado' vía RabbitMQ
+   * @param arquitecto_id - ID del arquitecto recién creado
+   * @param usuario_id - ID del usuario que creó el arquitecto (se usa como moderador por defecto)
+   */
+  async crearVerificacionAutomatica(arquitecto_id: string, usuario_id: string): Promise<Verificacion> {
+    // Clave de idempotencia basada en el ID del arquitecto
+    // Esto evita crear múltiples verificaciones si el evento llega varias veces
+    const idempotency_key = `auto-verificacion-${arquitecto_id}`;
+
+    // Verificar idempotencia
+    const processed = await this.redisService.checkIdempotency(idempotency_key);
+    if (processed) {
+      this.logger.log(`Verificación automática ya existe para arquitecto ${arquitecto_id}`);
+      return processed;
+    }
+
+    // Verificar si ya existe una verificación para este arquitecto
+    const existing = await this.verificacionRepository.findOne({
+      where: { arquitecto_id },
+    });
+
+    if (existing) {
+      this.logger.log(`Ya existe una verificación para el arquitecto ${arquitecto_id}`);
+      await this.redisService.saveIdempotency(idempotency_key, existing);
+      return existing;
+    }
+
+    // Crear verificación automática en estado "pendiente"
+    const verificacion = this.verificacionRepository.create({
+      arquitecto_id,
+      moderador_id: usuario_id, // Usar el usuario que creó el arquitecto como moderador por defecto
+      estado: 'pendiente',
+      fecha_verificacion: new Date(),
+    });
+
+    const saved = await this.verificacionRepository.save(verificacion);
+
+    // Guardar clave de idempotencia
+    await this.redisService.saveIdempotency(idempotency_key, saved);
+
+    // Publicar evento de verificación solicitada
+    await this.rabbitMQService.publishEvent('verificacion.solicitada', {
+      id: saved.id,
+      arquitecto_id: saved.arquitecto_id,
+      estado: saved.estado,
+      timestamp: new Date().toISOString(),
+    });
+
+    this.logger.log(`Verificación automática creada para arquitecto ${arquitecto_id}: ${saved.id}`);
+
+    return saved;
+  }
 }
 

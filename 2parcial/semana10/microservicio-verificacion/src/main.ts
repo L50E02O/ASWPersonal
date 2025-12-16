@@ -18,6 +18,9 @@ async function bootstrap() {
       queueOptions: {
         durable: true,
       },
+      // Configurar exchange para escuchar eventos
+      exchange: process.env.RABBITMQ_EXCHANGE || 'arquitecto.exchange',
+      exchangeType: 'topic',
     },
   });
 

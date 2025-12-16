@@ -26,6 +26,15 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
       this.channel = await this.connection.createChannel();
       await this.channel.assertExchange(this.exchange, 'topic', { durable: true });
 
+      // Configurar binding para escuchar eventos de arquitecto
+      // Esto permite que el microservicio de Verificación reciba eventos 'arquitecto.creado'
+      const verificacionQueue = process.env.RABBITMQ_QUEUE_VERIFICACION || 'verificacion.queue';
+      await this.channel.assertQueue(verificacionQueue, { durable: true });
+      await this.channel.bindQueue(verificacionQueue, this.exchange, 'arquitecto.creado');
+      await this.channel.bindQueue(verificacionQueue, this.exchange, 'arquitecto.*');
+      
+      this.logger.log(`Binding configurado: ${verificacionQueue} escucha eventos de ${this.exchange}`);
+
       // Cliente para enviar mensajes síncronos
       this.client = ClientProxyFactory.create({
         transport: Transport.RMQ,

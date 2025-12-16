@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { VerificacionModule } from './verificacion/verificacion.module';
 import { RabbitMQModule } from './rabbitmq/rabbitmq.module';
 import { RedisModule } from './redis/redis.module';
+import { EventListenerService } from './rabbitmq/event-listener.service';
 
 /**
  * Módulo principal del microservicio de Verificación
@@ -24,6 +25,7 @@ import { RedisModule } from './redis/redis.module';
     RabbitMQModule,
     RedisModule,
   ],
+  providers: [EventListenerService],
 })
 export class AppModule {}
 

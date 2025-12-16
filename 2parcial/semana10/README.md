@@ -121,9 +121,10 @@ cd microservicio-verificacion && npm run start:dev
 
 ## Documentación Adicional
 
-- **[INICIO_RAPIDO.md](./INICIO_RAPIDO.md)** - Guía paso a paso para iniciar el proyecto
-- **[GUIA_IMPLEMENTACION.md](./GUIA_IMPLEMENTACION.md)** - Documentación detallada de la implementación
-- **[ESTRUCTURA_PROYECTO.md](./ESTRUCTURA_PROYECTO.md)** - Descripción de la estructura del proyecto
+- **[INICIO_RAPIDO.md](./docs/INICIO_RAPIDO.md)** - Guía paso a paso para iniciar el proyecto
+- **[ESTRUCTURA_PROYECTO.md](./docs/ESTRUCTURA_PROYECTO.md)** - Descripción de la estructura del proyecto
+- **[GUIA_PRESENTACION_PRACTICA.md](./docs/GUIA_PRESENTACION_PRACTICA.md)** - Guía completa para la presentación en clase
+- **[DEMO_RESILIENCIA.md](./docs/DEMO_RESILIENCIA.md)** - Guía detallada para demostrar resiliencia y manejo de fallos
 
 ## Scripts de Verificación
 

@@ -58,5 +58,8 @@ export class VerificacionController {
   async findByArquitecto(@Body() data: { arquitecto_id: string }) {
     return this.verificacionService.findByArquitecto(data.arquitecto_id);
   }
+
+  // Nota: El evento 'arquitecto.creado' se maneja en EventListenerService
+  // usando amqplib directamente para mayor control sobre el consumo de eventos
 }
 
