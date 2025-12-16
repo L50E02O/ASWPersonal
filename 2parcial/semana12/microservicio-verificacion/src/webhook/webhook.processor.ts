@@ -26,16 +26,20 @@ export class WebhookProcessor {
       signature,
       correlationId,
       attemptNumber,
+      retryIntervals,
     } = job.data as {
       subscription: WebhookSubscription;
       payload: WebhookPayload;
       signature: string;
       correlationId: string;
       attemptNumber: number;
+      retryIntervals: number[];
     };
 
+    const currentAttempt = job.attemptsMade + 1;
+
     this.logger.log(
-      `Procesando entrega de webhook: ${payload.event} (Intento ${job.attemptsMade + 1}/${subscription.retry_config.max_attempts})`,
+      `Procesando entrega de webhook: ${payload.event} (Intento ${currentAttempt}/${subscription.retry_config.max_attempts})`,
     );
 
     const result = await this.webhookService.deliverWebhook(
@@ -43,25 +47,33 @@ export class WebhookProcessor {
       payload,
       signature,
       correlationId,
-      job.attemptsMade + 1,
+      currentAttempt,
     );
 
     if (!result.success) {
       // Si es el último intento, mover a DLQ
-      if (job.attemptsMade + 1 >= subscription.retry_config.max_attempts) {
+      if (currentAttempt >= subscription.retry_config.max_attempts) {
         await this.webhookService.moveToDLQ(
           subscription,
           payload,
           signature,
           correlationId,
-          job.attemptsMade + 1,
+          currentAttempt,
         );
         throw new Error(
-          `Webhook falló después de ${job.attemptsMade + 1} intentos. Movido a DLQ.`,
+          `Webhook falló después de ${currentAttempt} intentos. Movido a DLQ.`,
         );
       }
-      // Si no es el último intento, lanzar error para que Bull reintente
-      throw new Error(`Intento ${job.attemptsMade + 1} falló: ${result.error}`);
+      
+      // Calcular delay para el siguiente intento
+      const delayIndex = Math.min(currentAttempt, retryIntervals.length - 1);
+      const nextDelay = retryIntervals[delayIndex] * 1000; // Convertir a milisegundos
+      
+      // Actualizar el delay del job para el siguiente intento
+      job.opts.delay = nextDelay;
+      
+      // Lanzar error para que Bull reintente con el nuevo delay
+      throw new Error(`Intento ${currentAttempt} falló: ${result.error}`);
     }
 
     return result;
