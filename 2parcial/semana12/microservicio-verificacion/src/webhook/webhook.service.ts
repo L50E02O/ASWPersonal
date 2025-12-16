@@ -70,6 +70,7 @@ export class WebhookService implements OnModuleInit {
         const signature = this.generateHMACSignature(payload, subscription.secret_key);
 
         // Agregar job a la cola de Bull con configuración de retry
+        // Usamos backoff 'fixed' con delay inicial, el delay real se calcula en el procesador
         await this.webhookQueue.add(
           'deliver-webhook',
           {
@@ -78,17 +79,13 @@ export class WebhookService implements OnModuleInit {
             signature,
             correlationId: correlationId || uuidv4(),
             attemptNumber: 1,
+            retryIntervals: subscription.retry_config.backoff_intervals,
           },
           {
             attempts: subscription.retry_config.max_attempts,
             backoff: {
-              type: 'exponential',
-              delay: (job) => {
-                const attemptNumber = job.attemptsMade + 1;
-                const intervals = subscription.retry_config.backoff_intervals;
-                const delayIndex = Math.min(attemptNumber - 1, intervals.length - 1);
-                return intervals[delayIndex] * 1000; // Convertir a milisegundos
-              },
+              type: 'fixed',
+              delay: subscription.retry_config.backoff_intervals[0] * 1000, // Primer delay en milisegundos
             },
             removeOnComplete: true,
             removeOnFail: false, // Mantener en DLQ

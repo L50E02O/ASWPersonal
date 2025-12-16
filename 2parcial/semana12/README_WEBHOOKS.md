@@ -248,9 +248,20 @@ SUPABASE_SERVICE_KEY=tu-service-role-key
 SERVICE_NAME=microservicio-verificacion
 ```
 
-### Paso 3: API Gateway (Opcional)
+### Paso 3: API Gateway
 
-Si tienes un API Gateway, configura su `.env` también.
+Crea el archivo `.env` en `api-gateway/`:
+
+```env
+# RabbitMQ Configuration
+RABBITMQ_URL=amqp://admin:admin123@localhost:5672
+RABBITMQ_QUEUE_ARQUITECTO=arquitecto.queue
+RABBITMQ_QUEUE_VERIFICACION=verificacion.queue
+
+# Application Configuration
+PORT=3000
+NODE_ENV=development
+```
 
 ---
 
