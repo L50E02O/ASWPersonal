@@ -63,6 +63,7 @@ REDIS_PORT=6379
 # Supabase (para Webhooks)
 SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 SUPABASE_SERVICE_KEY=your-service-role-key
+SUPABASE_ANON_KEY=your-anon-key (opcional, usa SERVICE_KEY si no se proporciona)
 SERVICE_NAME=microservicio-arquitecto
 ```
 
@@ -87,7 +88,8 @@ REDIS_PORT=6379
 # Supabase (para Webhooks)
 SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 SUPABASE_SERVICE_KEY=your-service-role-key
-SERVICE_NAME=microservicio-verificacionNAME
+SUPABASE_ANON_KEY=your-anon-key (opcional, usa SERVICE_KEY si no se proporciona)
+SERVICE_NAME=microservicio-verificacion
 ```
 
 ## 3. Variables de Entorno para Edge Functions

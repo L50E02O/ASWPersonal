@@ -17,6 +17,7 @@ export class WebhookService implements OnModuleInit {
   private readonly axiosInstance: AxiosInstance;
   private readonly supabaseUrl: string;
   private readonly supabaseServiceKey: string;
+  private readonly supabaseAnonKey: string;
   private readonly defaultRetryConfig: RetryConfig = {
     max_attempts: 6,
     backoff_intervals: [60, 300, 1800, 7200, 43200], // 1min, 5min, 30min, 2h, 12h
@@ -28,6 +29,7 @@ export class WebhookService implements OnModuleInit {
   ) {
     this.supabaseUrl = this.configService.get<string>('SUPABASE_URL') || '';
     this.supabaseServiceKey = this.configService.get<string>('SUPABASE_SERVICE_KEY') || '';
+    this.supabaseAnonKey = this.configService.get<string>('SUPABASE_ANON_KEY') || this.supabaseServiceKey;
 
     this.axiosInstance = axios.create({
       timeout: 10000, // 10 segundos
@@ -202,14 +204,22 @@ export class WebhookService implements OnModuleInit {
       );
 
       // Enviar HTTP POST al suscriptor
+      // Si es una Edge Function de Supabase, agregar header de autorización
+      const headers: Record<string, string> = {
+        'X-Webhook-Signature': signature,
+        'X-Webhook-Event': payload.event,
+        'X-Webhook-Id': payload.id,
+        'X-Webhook-Timestamp': payload.timestamp,
+        'X-Correlation-Id': correlationId,
+      };
+
+      // Agregar autorización para Edge Functions de Supabase
+      if (subscription.subscriber_url.includes('supabase.co/functions/v1/')) {
+        headers['Authorization'] = `Bearer ${this.supabaseAnonKey}`;
+      }
+
       const response = await this.axiosInstance.post(subscription.subscriber_url, payload, {
-        headers: {
-          'X-Webhook-Signature': signature,
-          'X-Webhook-Event': payload.event,
-          'X-Webhook-Id': payload.id,
-          'X-Webhook-Timestamp': payload.timestamp,
-          'X-Correlation-Id': correlationId,
-        },
+        headers,
       });
 
       // Registrar éxito
