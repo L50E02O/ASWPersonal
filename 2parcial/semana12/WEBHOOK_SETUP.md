@@ -206,13 +206,47 @@ SELECT * FROM webhook_events ORDER BY processed_at DESC LIMIT 10;
 
 ## 8. Reenviar desde DLQ
 
+### Configurar Secret para DLQ Replay
+
+La Edge Function `webhook-dlq-replay` necesita el `SUPABASE_ANON_KEY` para autenticarse al reenviar webhooks a otras Edge Functions.
+
+1. Ve a: Supabase Dashboard → Edge Functions → `webhook-dlq-replay` → Secrets
+2. Agrega:
+   ```
+   SUPABASE_ANON_KEY=tu-anon-key-de-supabase
+   ```
+
+**Obtener tu Anon Key:**
+- Ve a: Supabase Dashboard → Settings → API
+- Copia el **anon/public key** (no el service_role key)
+
+### Usar la Función de Replay
+
 ```bash
 # Reenviar los 10 más antiguos de la DLQ
 curl -X POST "https://YOUR_PROJECT.supabase.co/functions/v1/webhook-dlq-replay?limit=10" \
-  -H "Authorization: Bearer YOUR_ANON_KEY"
+  -H "Authorization: Bearer YOUR_ANON_KEY" \
+  -H "Content-Type: application/json"
 
 # Reenviar un delivery específico
 curl -X POST "https://YOUR_PROJECT.supabase.co/functions/v1/webhook-dlq-replay?delivery_id=UUID" \
-  -H "Authorization: Bearer YOUR_ANON_KEY"
+  -H "Authorization: Bearer YOUR_ANON_KEY" \
+  -H "Content-Type: application/json"
 ```
+
+**Nota**: El header `Authorization` es necesario porque la Edge Function tiene `verify_jwt: true` habilitado por seguridad.
+
+### Solución de Error 401
+
+Si recibes `401: Unauthorized` al reenviar webhooks:
+
+1. **Verifica que `SUPABASE_ANON_KEY` esté configurado** en los secrets de `webhook-dlq-replay`
+2. **Verifica que el anon key sea correcto** (debe ser el anon/public key, no el service_role)
+3. **Revisa los logs** de la Edge Function para ver detalles del error
+
+Los logs mostrarán:
+```
+[DEBUG] Agregado header de autorización para Supabase Edge Function
+```
+Si ves un warning sobre `SUPABASE_ANON_KEY` no encontrado, agrega el secret.
 
