@@ -9,7 +9,8 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Configurar microservicio RabbitMQ
+  // Configurar microservicio RabbitMQ para mensajes RPC (usado por API Gateway)
+  // Nota: Los eventos asíncronos se manejan con EventListenerService usando amqplib
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.RMQ,
     options: {
@@ -18,9 +19,8 @@ async function bootstrap() {
       queueOptions: {
         durable: true,
       },
-      // Configurar exchange para escuchar eventos
-      exchange: process.env.RABBITMQ_EXCHANGE || 'arquitecto.exchange',
-      exchangeType: 'topic',
+      // No configurar exchange aquí, los eventos se manejan con EventListenerService
+      // Solo usamos esto para mensajes RPC desde el API Gateway
     },
   });
 
@@ -29,6 +29,7 @@ async function bootstrap() {
 
   console.log(`Microservicio Verificación ejecutándose en puerto ${process.env.PORT || 3002}`);
   console.log(`RabbitMQ conectado en: ${process.env.RABBITMQ_URL || 'amqp://admin:admin123@localhost:5672'}`);
+  console.log(`Cola RPC: ${process.env.RABBITMQ_QUEUE_VERIFICACION || 'verificacion.queue'}`);
 }
 
 bootstrap();

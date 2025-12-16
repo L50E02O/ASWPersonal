@@ -61,5 +61,6 @@ export class VerificacionController {
 
   // Nota: El evento 'arquitecto.creado' se maneja en EventListenerService
   // usando amqplib directamente para mayor control sobre el consumo de eventos
+  // Los eventos asíncronos NO usan @MessagePattern, se manejan con amqplib
 }
 

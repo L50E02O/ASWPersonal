@@ -1,16 +1,14 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
-import { ClientProxy, ClientProxyFactory, Transport } from '@nestjs/microservices';
 import * as amqp from 'amqplib';
 
 /**
  * Servicio RabbitMQ para comunicación con otros microservicios
- * Publica eventos y envía mensajes síncronos
+ * Publica eventos de dominio (no usa RPC, solo eventos asíncronos)
  */
 @Injectable()
 export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
   private connection: amqp.ChannelModel | null = null;
   private channel: amqp.Channel | null = null;
-  private client: ClientProxy;
   private readonly logger = new Logger(RabbitMQService.name);
   private readonly exchange = process.env.RABBITMQ_EXCHANGE || 'arquitecto.exchange';
 
@@ -34,19 +32,6 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
       await this.channel.bindQueue(verificacionQueue, this.exchange, 'arquitecto.*');
       
       this.logger.log(`Binding configurado: ${verificacionQueue} escucha eventos de ${this.exchange}`);
-
-      // Cliente para enviar mensajes síncronos
-      this.client = ClientProxyFactory.create({
-        transport: Transport.RMQ,
-        options: {
-          urls: [url],
-          queue: 'arquitecto.queue',
-          queueOptions: { durable: true },
-        },
-      });
-
-      await this.client.connect();
-
       this.logger.log('Conectado a RabbitMQ exitosamente');
     } catch (error) {
       this.logger.error('Error al conectar con RabbitMQ:', error);
@@ -58,9 +43,6 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
    * Cierra la conexión con RabbitMQ
    */
   async onModuleDestroy() {
-    if (this.client) {
-      await this.client.close();
-    }
     if (this.channel) {
       await this.channel.close();
     }
@@ -103,22 +85,5 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /**
-   * Envía un mensaje síncrono a otro microservicio
-   * @param pattern - Patrón del mensaje (ej: 'arquitecto.exists')
-   * @param data - Datos del mensaje
-   */
-  async sendMessage(pattern: string, data: any): Promise<any> {
-    if (!this.client) {
-      throw new Error('Cliente de RabbitMQ no está inicializado');
-    }
-
-    try {
-      return await this.client.send(pattern, data).toPromise();
-    } catch (error) {
-      this.logger.error(`Error al enviar mensaje ${pattern}:`, error);
-      throw error;
-    }
-  }
 }
 
