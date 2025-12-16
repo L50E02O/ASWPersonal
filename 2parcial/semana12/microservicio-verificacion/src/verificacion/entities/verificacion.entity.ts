@@ -22,7 +22,7 @@ export class Verificacion {
   })
   estado: 'pendiente' | 'verificado' | 'rechazado';
 
-  @Column({ type: 'date', name: 'fecha_verificacion', default: () => 'CURRENT_DATE' })
+  @Column({ type: 'timestamp', name: 'fecha_verificacion', default: () => 'CURRENT_TIMESTAMP' })
   fecha_verificacion: Date;
 
   @Column({ type: 'uuid', name: 'arquitecto_id' })

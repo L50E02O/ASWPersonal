@@ -24,7 +24,7 @@ export class CreateArquitectos1700000000000 implements MigrationInterface {
           },
           {
             name: 'valoracion_prom_proyecto',
-            type: 'float',
+            type: 'real',
             default: 0.0,
             isNullable: false,
           },
@@ -64,14 +64,15 @@ export class CreateArquitectos1700000000000 implements MigrationInterface {
           },
           {
             name: 'created_at',
-            type: 'timestamp',
+            type: 'timestamp with time zone',
             default: 'CURRENT_TIMESTAMP',
+            isNullable: false,
           },
           {
             name: 'updated_at',
-            type: 'timestamp',
+            type: 'timestamp with time zone',
             default: 'CURRENT_TIMESTAMP',
-            onUpdate: 'CURRENT_TIMESTAMP',
+            isNullable: false,
           },
         ],
         indices: [
@@ -88,6 +89,24 @@ export class CreateArquitectos1700000000000 implements MigrationInterface {
       }),
       true,
     );
+
+    // Crear trigger para actualizar updated_at automáticamente
+    await queryRunner.query(`
+      CREATE OR REPLACE FUNCTION update_updated_at_column()
+      RETURNS TRIGGER AS $$
+      BEGIN
+        NEW.updated_at = CURRENT_TIMESTAMP;
+        RETURN NEW;
+      END;
+      $$ language 'plpgsql';
+    `);
+
+    await queryRunner.query(`
+      CREATE TRIGGER update_arquitectos_updated_at
+      BEFORE UPDATE ON arquitectos
+      FOR EACH ROW
+      EXECUTE FUNCTION update_updated_at_column();
+    `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
