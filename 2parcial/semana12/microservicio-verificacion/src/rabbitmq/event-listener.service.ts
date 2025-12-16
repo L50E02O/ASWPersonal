@@ -12,7 +12,7 @@ export class EventListenerService implements OnModuleInit, OnModuleDestroy {
   private channel: amqp.Channel | null = null;
   private readonly logger = new Logger(EventListenerService.name);
   private readonly exchange = process.env.RABBITMQ_EXCHANGE || 'arquitecto.exchange';
-  private readonly queue = 'verificacion-events.queue';
+  private readonly queue = process.env.RABBITMQ_QUEUE_EVENTOS || 'verificacion.eventos.queue';
 
   constructor(private readonly verificacionService: VerificacionService) {}
 
