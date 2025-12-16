@@ -32,7 +32,8 @@ export class VerificacionService {
 
   /**
    * Crea una nueva verificación con idempotencia
-   * Verifica que el arquitecto exista vía RabbitMQ antes de crear
+   * Nota: La verificación de existencia del arquitecto se maneja a nivel de base de datos
+   * mediante la restricción única en arquitecto_id
    */
   async create(createVerificacionDto: CreateVerificacionDto): Promise<Verificacion> {
     const { idempotency_key, arquitecto_id } = createVerificacionDto;
@@ -42,17 +43,6 @@ export class VerificacionService {
     if (processed) {
       this.logger.warn(`Solicitud duplicada detectada: ${idempotency_key}`);
       return processed;
-    }
-
-    // Verificar que el arquitecto existe vía RabbitMQ
-    const arquitectoExists = await this.rabbitMQService.sendMessage('arquitecto.exists', {
-      id: arquitecto_id,
-    });
-
-    if (!arquitectoExists.exists) {
-      throw new BadRequestException(
-        `Arquitecto con ID ${arquitecto_id} no existe`,
-      );
     }
 
     // Verificar si ya existe una verificación para este arquitecto
