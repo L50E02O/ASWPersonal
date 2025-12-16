@@ -39,17 +39,27 @@ La Edge Function `webhook-external-notifier` envía notificaciones por correo el
    - Agrega los siguientes secrets:
      ```
      RESEND_API_KEY=re_xxxxxxxxxxxxx
-     EMAIL_FROM=noreply@tudominio.com  (o onboarding@resend.dev para pruebas)
+     EMAIL_FROM=onboarding@resend.dev  (⚠️ IMPORTANTE: Usa este para pruebas, NO uses Gmail)
      EMAIL_TO=tu-email@example.com
      ```
+   
+   **⚠️ IMPORTANTE**: 
+   - NO uses direcciones de Gmail (ej: `tuemail@gmail.com`) en `EMAIL_FROM`
+   - Para pruebas, SIEMPRE usa: `onboarding@resend.dev`
+   - Para producción, verifica tu propio dominio en Resend
 
-### Ejemplo de Configuración
+### Ejemplo de Configuración (Para Pruebas)
 
 ```env
 RESEND_API_KEY=re_AbCdEfGhIjKlMnOpQrStUvWxYz123456789
 EMAIL_FROM=onboarding@resend.dev
-EMAIL_TO=admin@example.com,notifications@example.com
+EMAIL_TO=tu-email-personal@gmail.com
 ```
+
+**⚠️ Nota Importante**: 
+- `EMAIL_FROM` debe ser `onboarding@resend.dev` para pruebas (NO uses Gmail)
+- `EMAIL_TO` puede ser tu email personal de Gmail sin problema
+- El email llegará a tu bandeja de entrada (puede ir a spam inicialmente)
 
 ## Opción 2: SendGrid
 
