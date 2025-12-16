@@ -114,6 +114,11 @@ export class VerificacionService {
     if (saved.estado === 'pendiente') {
       try {
         const correlationId = `verif-${saved.id}-${Date.now()}`;
+        // Convertir fecha_verificacion a Date si es string (PostgreSQL date type)
+        const fechaVerificacion = saved.fecha_verificacion instanceof Date 
+          ? saved.fecha_verificacion 
+          : new Date(saved.fecha_verificacion);
+        
         await this.webhookService.publishWebhook(
           'verification.pending',
           {
@@ -121,7 +126,7 @@ export class VerificacionService {
             architect_id: saved.arquitecto_id,
             estado: saved.estado,
             moderador_id: saved.moderador_id,
-            fecha_verificacion: saved.fecha_verificacion.toISOString(),
+            fecha_verificacion: fechaVerificacion.toISOString(),
             created_at: saved.created_at.toISOString(),
           },
           correlationId,
@@ -300,6 +305,11 @@ export class VerificacionService {
     if (saved.estado === 'pendiente') {
       try {
         const correlationId = `verif-auto-${saved.id}-${Date.now()}`;
+        // Convertir fecha_verificacion a Date si es string (PostgreSQL date type)
+        const fechaVerificacion = saved.fecha_verificacion instanceof Date 
+          ? saved.fecha_verificacion 
+          : new Date(saved.fecha_verificacion);
+        
         await this.webhookService.publishWebhook(
           'verification.pending',
           {
@@ -307,7 +317,7 @@ export class VerificacionService {
             architect_id: saved.arquitecto_id,
             estado: saved.estado,
             moderador_id: saved.moderador_id,
-            fecha_verificacion: saved.fecha_verificacion.toISOString(),
+            fecha_verificacion: fechaVerificacion.toISOString(),
             created_at: saved.created_at.toISOString(),
           },
           correlationId,
