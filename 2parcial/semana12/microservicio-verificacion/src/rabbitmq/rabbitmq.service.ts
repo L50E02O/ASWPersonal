@@ -26,12 +26,13 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
 
       // Configurar binding para escuchar eventos de arquitecto
       // Esto permite que el microservicio de Verificación reciba eventos 'arquitecto.creado'
-      const verificacionQueue = process.env.RABBITMQ_QUEUE_VERIFICACION || 'verificacion.queue';
-      await this.channel.assertQueue(verificacionQueue, { durable: true });
-      await this.channel.bindQueue(verificacionQueue, this.exchange, 'arquitecto.creado');
-      await this.channel.bindQueue(verificacionQueue, this.exchange, 'arquitecto.*');
+      // Usamos una cola separada para eventos (no para RPC)
+      const verificacionEventsQueue = process.env.RABBITMQ_QUEUE_EVENTOS || 'verificacion.eventos.queue';
+      await this.channel.assertQueue(verificacionEventsQueue, { durable: true });
+      await this.channel.bindQueue(verificacionEventsQueue, this.exchange, 'arquitecto.creado');
+      await this.channel.bindQueue(verificacionEventsQueue, this.exchange, 'arquitecto.*');
       
-      this.logger.log(`Binding configurado: ${verificacionQueue} escucha eventos de ${this.exchange}`);
+      this.logger.log(`Binding configurado: ${verificacionEventsQueue} escucha eventos de ${this.exchange}`);
       this.logger.log('Conectado a RabbitMQ exitosamente');
     } catch (error) {
       this.logger.error('Error al conectar con RabbitMQ:', error);

@@ -11,11 +11,12 @@ async function bootstrap() {
 
   // Configurar microservicio RabbitMQ para mensajes RPC (usado por API Gateway)
   // Nota: Los eventos asíncronos se manejan con EventListenerService usando amqplib
+  // Usamos una cola separada para RPC ('verificacion.rpc.queue') para evitar conflictos con los eventos
   app.connectMicroservice<MicroserviceOptions>({
     transport: Transport.RMQ,
     options: {
       urls: [process.env.RABBITMQ_URL || 'amqp://admin:admin123@localhost:5672'],
-      queue: process.env.RABBITMQ_QUEUE_VERIFICACION || 'verificacion.queue',
+      queue: process.env.RABBITMQ_QUEUE_RPC || 'verificacion.rpc.queue',
       queueOptions: {
         durable: true,
       },
@@ -29,7 +30,7 @@ async function bootstrap() {
 
   console.log(`Microservicio Verificación ejecutándose en puerto ${process.env.PORT || 3002}`);
   console.log(`RabbitMQ conectado en: ${process.env.RABBITMQ_URL || 'amqp://admin:admin123@localhost:5672'}`);
-  console.log(`Cola RPC: ${process.env.RABBITMQ_QUEUE_VERIFICACION || 'verificacion.queue'}`);
+  console.log(`Cola RPC: ${process.env.RABBITMQ_QUEUE_RPC || 'verificacion.rpc.queue'}`);
 }
 
 bootstrap();

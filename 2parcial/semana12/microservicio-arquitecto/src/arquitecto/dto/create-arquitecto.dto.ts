@@ -28,4 +28,3 @@ export class CreateArquitectoDto {
   @IsOptional()
   verificado?: boolean;
 }
-
