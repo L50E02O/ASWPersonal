@@ -307,3 +307,4 @@ export class UpdateVerificacionDto {
 - Triggers implementados correctamente
 - Campos opcionales/requeridos coinciden
 
+
