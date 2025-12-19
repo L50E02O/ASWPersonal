@@ -163,9 +163,28 @@ INSERT INTO webhook_subscriptions (
 SELECT * FROM webhook_subscriptions;
 ```
 
-### Paso 5: Configurar Secrets de Edge Functions
+### Paso 5: Desplegar Edge Functions
 
-Las Edge Functions ya están desplegadas. Solo necesitas configurar los secrets:
+Las Edge Functions están disponibles en la carpeta `supabase-edge-functions/`. 
+
+**Opción A: Ya están desplegadas** (si las desplegaste con MCP)
+- Solo necesitas configurar los secrets
+
+**Opción B: Desplegar manualmente**
+
+1. **Usando Supabase CLI**:
+```bash
+cd supabase-edge-functions
+supabase functions deploy webhook-event-logger
+supabase functions deploy webhook-external-notifier
+supabase functions deploy webhook-dlq-replay
+```
+
+2. **O desde Supabase Dashboard**:
+   - Ve a: Edge Functions → Create new function
+   - Copia el código de cada `index.ts` desde `supabase-edge-functions/`
+
+### Paso 6: Configurar Secrets de Edge Functions
 
 #### Edge Function: `webhook-event-logger`
 
@@ -186,11 +205,20 @@ Las Edge Functions ya están desplegadas. Solo necesitas configurar los secrets:
    SUPABASE_SERVICE_ROLE_KEY=tu-service-role-key
    WEBHOOK_SECRET=TU_SECRET_AQUI
    RESEND_API_KEY=re_xxxxxxxxxxxxx  (o SENDGRID_API_KEY=SG.xxxxxxxxxxxxx)
-   EMAIL_FROM=onboarding@resend.dev  (o tu email verificado)
+   EMAIL_FROM=onboarding@resend.dev  (⚠️ IMPORTANTE: Usa este para pruebas, NO uses Gmail)
    EMAIL_TO=tu-email@example.com
    ```
 
-**📧 Para configurar email, ver:** [EMAIL_SETUP_GUIDE.md](./EMAIL_SETUP_GUIDE.md)
+**📧 Configuración de Email:**
+- **Resend** (recomendado): https://resend.com → Crear cuenta → Obtener API Key
+- **SendGrid** (alternativa): https://sendgrid.com → Crear cuenta → Obtener API Key
+- **EMAIL_FROM**: Para pruebas usa `onboarding@resend.dev` (NO uses Gmail)
+- **EMAIL_TO**: Puede ser tu email personal (Gmail, Outlook, etc.)
+
+**⚠️ IMPORTANTE**: 
+- NO uses Gmail (ej: `tuemail@gmail.com`) en `EMAIL_FROM`
+- Resend no permite usar dominios no verificados
+- Para pruebas, SIEMPRE usa: `onboarding@resend.dev`
 
 ---
 
@@ -248,9 +276,9 @@ SUPABASE_SERVICE_KEY=tu-service-role-key
 SERVICE_NAME=microservicio-verificacion
 ```
 
-### Paso 3: API Gateway
+### Paso 3: API Gateway (Opcional)
 
-Crea el archivo `.env` en `api-gateway/`:
+Si usas el API Gateway, crea el archivo `.env` en `api-gateway/`:
 
 ```env
 # RabbitMQ Configuration
@@ -267,12 +295,14 @@ NODE_ENV=development
 
 ## 🚀 Iniciar los Servicios
 
-### Terminal 1: API Gateway (si lo tienes)
+### Terminal 1: API Gateway (Opcional)
 
 ```bash
 cd api-gateway
 npm run start:dev
 ```
+
+**Nota**: El API Gateway es opcional. Puedes llamar directamente a los microservicios si prefieres.
 
 ### Terminal 2: Microservicio Arquitecto
 
@@ -425,8 +455,11 @@ ORDER BY created_at DESC;
 5. **Reactivar la Edge Function** y usar el Replay Mechanism:
 ```bash
 curl -X POST "https://YOUR_PROJECT.supabase.co/functions/v1/webhook-dlq-replay?limit=10" \
-  -H "Authorization: Bearer YOUR_ANON_KEY"
+  -H "Authorization: Bearer YOUR_ANON_KEY" \
+  -H "Content-Type: application/json"
 ```
+
+**Nota**: Asegúrate de configurar el secret `SUPABASE_ANON_KEY` en la Edge Function `webhook-dlq-replay` para que pueda autenticarse al reenviar webhooks.
 
 ---
 
@@ -489,11 +522,11 @@ WHERE active = true;
 ### Ver Logs de Edge Functions
 
 1. Ve a: Supabase Dashboard → Edge Functions → `webhook-event-logger` → Logs
-2. O usa el MCP:
-```bash
-# Ver logs de API
-mcp_supabase_get_logs service=api
-```
+2. Los logs muestran información detallada con:
+   - Request ID único para rastreo
+   - Niveles de log: [INFO], [DEBUG], [WARN], [ERROR]
+   - Timestamps y tiempos de procesamiento
+   - Detalles de validaciones y operaciones
 
 ---
 
@@ -536,7 +569,10 @@ grep -i "error" logs/*.log
 1. Verifica los secrets de la Edge Function `webhook-external-notifier`
 2. Verifica los logs de la Edge Function en Supabase Dashboard
 3. Revisa la carpeta de spam
-4. Verifica que el dominio/email esté verificado en Resend/SendGrid
+4. **IMPORTANTE**: Usa `onboarding@resend.dev` en `EMAIL_FROM` para pruebas
+   - NO uses Gmail (ej: `tuemail@gmail.com`) en `EMAIL_FROM`
+   - Resend no permite usar dominios no verificados
+5. Verifica que `RESEND_API_KEY` o `SENDGRID_API_KEY` esté correcto
 
 ### Problema: Error de conexión a Supabase
 
@@ -579,17 +615,16 @@ Antes de probar, verifica que tengas:
 - [ ] Variables de entorno configuradas (`.env` en ambos microservicios)
 - [ ] Suscripciones creadas en Supabase (`webhook_subscriptions`)
 - [ ] Secrets configurados en Edge Functions
-- [ ] Email configurado (Resend o SendGrid)
+- [ ] Email configurado (Resend o SendGrid) - opcional
 - [ ] Microservicios corriendo (`npm run start:dev`)
 
 ---
 
 ## 📚 Documentación Adicional
 
-- [WEBHOOK_SETUP.md](./WEBHOOK_SETUP.md) - Configuración detallada
-- [EMAIL_SETUP_GUIDE.md](./EMAIL_SETUP_GUIDE.md) - Guía de configuración de email
-- [WEBHOOK_PAYLOAD_EXAMPLES.md](./WEBHOOK_PAYLOAD_EXAMPLES.md) - Ejemplos de payloads
-- [IMPLEMENTACION_WEBHOOKS.md](./IMPLEMENTACION_WEBHOOKS.md) - Resumen de implementación
+- **[README.md](./README.md)** - Documentación principal del proyecto
+- **[README-VIDEO.md](./README-VIDEO.md)** - Enlace al video de la práctica
+- **[supabase-edge-functions/](./supabase-edge-functions/)** - Código fuente de las Edge Functions
 
 ---
 
@@ -619,10 +654,28 @@ Antes de probar, verifica que tengas:
 
 ## 🆘 ¿Necesitas Ayuda?
 
-1. Revisa los logs de los microservicios
-2. Revisa los logs de las Edge Functions en Supabase
+1. Revisa los logs de los microservicios (consola donde ejecutas `npm run start:dev`)
+2. Revisa los logs de las Edge Functions en Supabase Dashboard
 3. Verifica las tablas en Supabase para ver qué está pasando
-4. Consulta la documentación adicional
+4. Consulta el README principal: [README.md](./README.md)
+5. Revisa el código de las Edge Functions en: `supabase-edge-functions/`
+
+## 📁 Estructura de Archivos
+
+```
+semana12/
+├── README.md                      # Documentación principal
+├── README_WEBHOOKS.md             # Esta guía (configuración de webhooks)
+├── README-VIDEO.md                # Enlace al video
+├── api-gateway/                   # API Gateway
+├── microservicio-arquitecto/      # Microservicio A
+├── microservicio-verificacion/    # Microservicio B
+├── supabase-edge-functions/       # Edge Functions (código fuente)
+│   ├── webhook-event-logger/
+│   ├── webhook-external-notifier/
+│   └── webhook-dlq-replay/
+└── docker-compose.yml            # Orquestación de servicios
+```
 
 ¡Éxito con tu implementación! 🚀
 
