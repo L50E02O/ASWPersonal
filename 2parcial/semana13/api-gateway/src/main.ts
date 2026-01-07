@@ -1,6 +1,10 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import * as dotenv from 'dotenv';
+
+// Cargar variables de entorno desde .env
+dotenv.config();
 
 /**
  * Inicializa el API Gateway
