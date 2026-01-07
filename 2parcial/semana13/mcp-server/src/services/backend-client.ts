@@ -12,7 +12,7 @@ export class BackendClient {
   private timeout: number;
 
   constructor() {
-    this.baseURL = process.env.BACKEND_BASE_URL || 'http://localhost:3001';
+    this.baseURL = process.env.BACKEND_BASE_URL || 'http://localhost:3002';
     this.timeout = parseInt(process.env.REQUEST_TIMEOUT || '10000');
 
     this.httpClient = axios.create({

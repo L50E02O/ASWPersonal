@@ -117,25 +117,29 @@ const execute = async (
     };
   }
 
-  // Validar estado si se proporciona
+  // Validar y normalizar estado si se proporciona (aceptar mayúsculas y minúsculas)
   const estadosValidos = ['pendiente', 'verificado', 'rechazado'];
-  if (params.estado && !estadosValidos.includes(params.estado as string)) {
-    throw {
-      code: JSONRPCErrorCode.VALIDATION_ERROR,
-      message: `Estado inválido: "${params.estado}". Valores permitidos: ${estadosValidos.join(', ')}`,
-    };
+  let estadoNormalizado: string | undefined;
+  if (params.estado) {
+    estadoNormalizado = String(params.estado).toLowerCase();
+    if (!estadosValidos.includes(estadoNormalizado)) {
+      throw {
+        code: JSONRPCErrorCode.VALIDATION_ERROR,
+        message: `Estado inválido: "${params.estado}". Valores permitidos: ${estadosValidos.join(', ')}`,
+      };
+    }
   }
 
   try {
     // Construir URL del backend
     const baseUrl = process.env.VERIFICACION_SERVICE_URL || 'http://localhost:3002';
-    let url = `${baseUrl}/verificacion`;
+    let url = `${baseUrl}/api/verificacion/buscar`;
 
     // Construir query string con los parámetros
     const queryParams = new URLSearchParams();
     if (params.id) queryParams.append('id', String(params.id));
-    if (params.arquitecto_id) queryParams.append('arquitecto_id', String(params.arquitecto_id));
-    if (params.estado) queryParams.append('estado', String(params.estado));
+    if (params.arquitecto_id) queryParams.append('arquitectoId', String(params.arquitecto_id));
+    if (estadoNormalizado) queryParams.append('estado', estadoNormalizado);
 
     if (queryParams.toString()) {
       url += `?${queryParams.toString()}`;
@@ -155,18 +159,29 @@ const execute = async (
 
     console.log(`[buscar_verificacion] Respuesta exitosa:`, response.data);
 
-    // Procesar respuesta
-    if (response.data.success && response.data.data) {
+    // Procesar respuesta - el backend ahora devuelve un array directamente
+    const data = Array.isArray(response.data) ? response.data : (response.data as any).data || response.data;
+    
+    if (Array.isArray(data) && data.length > 0) {
       return {
         found: true,
-        verificacion: response.data.data,
-        message: `Verificación encontrada: ${response.data.data.id}`,
+        total: data.length,
+        verificaciones: data,
+        message: `Se encontraron ${data.length} verificación(es)`,
+      };
+    } else if (data && !Array.isArray(data) && data.id) {
+      return {
+        found: true,
+        total: 1,
+        verificaciones: [data],
+        message: `Verificación encontrada: ${data.id}`,
       };
     } else {
       return {
         found: false,
-        verificacion: null,
-        message: response.data.message || 'Verificación no encontrada con los criterios proporcionados',
+        total: 0,
+        verificaciones: [],
+        message: 'No se encontraron verificaciones con los criterios proporcionados',
       };
     }
   } catch (error) {

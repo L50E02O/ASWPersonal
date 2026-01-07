@@ -94,7 +94,8 @@ export class GeminiController {
 
       return {
         success: true,
-        gemini: status.gemini,
+        provider: status.provider,
+        ai: status.ai,
         mcpServer: status.mcpServer,
         timestamp: new Date().toISOString(),
       };

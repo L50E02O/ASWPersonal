@@ -141,6 +141,47 @@ export class VerificacionService {
   }
 
   /**
+   * Busca verificaciones por criterios
+   */
+  async buscar(criterios: {
+    id?: string;
+    arquitectoId?: string;
+    estado?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<Verificacion[]> {
+    const query = this.verificacionRepository.createQueryBuilder('v');
+
+    if (criterios.id) {
+      query.andWhere('v.id = :id', { id: criterios.id });
+    }
+
+    if (criterios.arquitectoId) {
+      query.andWhere('v.arquitecto_id = :arquitectoId', {
+        arquitectoId: criterios.arquitectoId,
+      });
+    }
+
+    if (criterios.estado) {
+      query.andWhere('v.estado = :estado', { estado: criterios.estado });
+    }
+
+    if (criterios.limit) {
+      query.take(criterios.limit);
+    } else {
+      query.take(10); // Default limit
+    }
+
+    if (criterios.offset) {
+      query.skip(criterios.offset);
+    }
+
+    query.orderBy('v.created_at', 'DESC');
+
+    return query.getMany();
+  }
+
+  /**
    * Obtiene una verificación por ID
    */
   async findOne(id: string): Promise<Verificacion> {

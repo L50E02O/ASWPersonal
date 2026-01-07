@@ -1,6 +1,7 @@
 /**
- * GeminiService - Integración con Google Generative AI
- * Maneja la comunicación con Gemini y ejecución de tools MCP
+ * GeminiService - Integración con múltiples proveedores de IA
+ * Soporta: Google Gemini y DeepSeek
+ * Maneja la comunicación con el proveedor de IA y ejecución de tools MCP
  */
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -9,6 +10,7 @@ import {
   SchemaType,
   type FunctionDeclaration,
 } from '@google/generative-ai';
+import OpenAI from 'openai';
 import axios from 'axios';
 
 /**
@@ -24,26 +26,84 @@ interface MCPTool {
   };
 }
 
+type AIProvider = 'gemini' | 'deepseek';
+
 @Injectable()
 export class GeminiService {
-  private client: GoogleGenerativeAI;
+  private geminiClient: GoogleGenerativeAI | null = null;
+  private deepseekClient: OpenAI | null = null;
   private mcpServerUrl: string;
   private readonly logger = new Logger(GeminiService.name);
   private tools: MCPTool[];
+  private provider: AIProvider;
 
   constructor() {
+    // Determinar qué proveedor usar
+    this.provider = (process.env.AI_PROVIDER as AIProvider) || 'gemini';
+    this.mcpServerUrl = process.env.MCP_SERVER_URL || 'http://localhost:3500';
+
+    // Inicializar el cliente según el proveedor
+    if (this.provider === 'deepseek') {
+      this.initializeDeepSeek();
+    } else {
+      this.initializeGemini();
+    }
+
+    // Inicializar tools de MCP
+    this.initializeMCPTools();
+  }
+
+  /**
+   * Inicializa el cliente de Google Gemini
+   */
+  private initializeGemini() {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       this.logger.warn(
         'GEMINI_API_KEY no configurada. Gemini no funcionará sin ella.',
       );
     }
-    this.client = new GoogleGenerativeAI(apiKey);
-    this.mcpServerUrl =
-      process.env.MCP_SERVER_URL || 'http://localhost:3500';
+    this.geminiClient = new GoogleGenerativeAI(apiKey || '');
+    this.logger.log('[GeminiService] Proveedor: Gemini');
+  }
 
-    // Inicializar tools de MCP
-    this.initializeMCPTools();
+  /**
+   * Inicializa el cliente de DeepSeek (soporta OpenRouter)
+   */
+  private initializeDeepSeek() {
+    const apiKey = process.env.DEEPSEEK_API_KEY;
+    if (!apiKey) {
+      this.logger.warn(
+        'DEEPSEEK_API_KEY no configurada. DeepSeek no funcionará sin ella.',
+      );
+    }
+    
+    // Detectar si es una API key de OpenRouter
+    const isOpenRouter = apiKey?.startsWith('sk-or-');
+    const baseURL = isOpenRouter 
+      ? (process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1')
+      : 'https://api.deepseek.com';
+    
+    this.deepseekClient = new OpenAI({
+      apiKey: apiKey || '',
+      baseURL,
+      defaultHeaders: isOpenRouter ? {
+        'HTTP-Referer': 'http://localhost:3000',
+        'X-Title': 'ASW Verificaciones',
+      } : undefined,
+    });
+    
+    this.logger.log(`[GeminiService] Proveedor: DeepSeek via ${isOpenRouter ? 'OpenRouter' : 'API directa'}`);
+  }
+
+  /**
+   * Obtener el modelo a usar según el proveedor
+   */
+  private getModel(): string {
+    if (this.provider === 'deepseek') {
+      return process.env.DEEPSEEK_MODEL || 'deepseek-chat';
+    }
+    return process.env.GEMINI_MODEL || 'gemini-2.0-flash';
   }
 
   /**
@@ -143,14 +203,14 @@ export class GeminiService {
   }
 
   /**
-   * Obtiene las tools MCP para exponer a Gemini
+   * Obtiene las tools MCP para exponer al proveedor de IA
    */
   getMCPTools() {
     return this.tools;
   }
 
   /**
-   * Mapea tipos de schema JSON a SchemaType
+   * Mapea tipos de schema JSON a SchemaType (para Gemini)
    */
   private mapSchemaType(type: string): SchemaType {
     const typeMap: Record<string, SchemaType> = {
@@ -213,21 +273,160 @@ export class GeminiService {
   }
 
   /**
-   * Procesa una solicitud de usuario con Gemini
-   * Gemini decide automáticamente qué tools usar basado en la intención del usuario
+   * Procesa una solicitud de usuario
+   * Delega al proveedor configurado (Gemini o DeepSeek)
    */
   async processUserRequest(userMessage: string): Promise<{
     response: string;
     toolsUsed: string[];
   }> {
+    if (this.provider === 'deepseek') {
+      return this.processWithDeepSeek(userMessage);
+    }
+    return this.processWithGemini(userMessage);
+  }
+
+  /**
+   * Procesa con DeepSeek
+   */
+  private async processWithDeepSeek(userMessage: string): Promise<{
+    response: string;
+    toolsUsed: string[];
+  }> {
     try {
       this.logger.log(
-        `[processUserRequest] Procesando mensaje: "${userMessage.substring(0, 50)}..."`,
+        `[processWithDeepSeek] Procesando mensaje: "${userMessage.substring(0, 50)}..."`,
       );
 
-      const model = this.client.getGenerativeModel({
-        model: 'gemini-pro',
+      if (!this.deepseekClient) {
+        throw new Error('DeepSeek client no inicializado');
+      }
+
+      const modelName = this.getModel();
+      const toolsUsed: string[] = [];
+
+      // Convertir tools al formato OpenAI
+      const openaiTools: OpenAI.ChatCompletionTool[] = this.tools.map(
+        (tool) => ({
+          type: 'function' as const,
+          function: {
+            name: tool.name,
+            description: tool.description,
+            parameters: {
+              type: 'object',
+              properties: tool.input_schema.properties,
+              required: tool.input_schema.required || [],
+            },
+          },
+        }),
+      );
+
+      // Primera llamada: DeepSeek analiza el mensaje
+      const messages: OpenAI.ChatCompletionMessageParam[] = [
+        {
+          role: 'system',
+          content:
+            'Eres un asistente que ayuda a gestionar verificaciones arquitectónicas. ' +
+            'Usa las herramientas disponibles para responder consultas sobre verificaciones.',
+        },
+        {
+          role: 'user',
+          content: userMessage,
+        },
+      ];
+
+      let response = await this.deepseekClient.chat.completions.create({
+        model: modelName,
+        messages,
+        tools: openaiTools,
+        tool_choice: 'auto',
       });
+
+      let assistantMessage = response.choices[0].message;
+
+      // Mientras haya tool calls, ejecutarlas
+      while (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
+        this.logger.log(
+          `[processWithDeepSeek] Ejecutando ${assistantMessage.tool_calls.length} tools`,
+        );
+
+        // Agregar el mensaje del asistente
+        messages.push(assistantMessage);
+
+        // Ejecutar cada tool
+        for (const toolCall of assistantMessage.tool_calls) {
+          // Acceder a la función de forma segura
+          const func = (toolCall as any).function;
+          const toolName = func?.name || 'unknown';
+          toolsUsed.push(toolName);
+
+          this.logger.log(`[processWithDeepSeek] Ejecutando tool: ${toolName}`);
+
+          let toolResult: any;
+          try {
+            const args = JSON.parse(func?.arguments || '{}');
+            toolResult = await this.executeMCPTool(toolName, args);
+          } catch (error: any) {
+            this.logger.error(
+              `[processWithDeepSeek] Error en tool ${toolName}:`,
+              error.message,
+            );
+            toolResult = { error: error.message };
+          }
+
+          // Agregar resultado de la tool
+          messages.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
+            content: JSON.stringify(toolResult),
+          });
+        }
+
+        // Siguiente llamada con los resultados
+        response = await this.deepseekClient.chat.completions.create({
+          model: modelName,
+          messages,
+          tools: openaiTools,
+          tool_choice: 'auto',
+        });
+
+        assistantMessage = response.choices[0].message;
+      }
+
+      const finalText = assistantMessage.content || 'Sin respuesta';
+      this.logger.log('[processWithDeepSeek] Respuesta generada');
+
+      return {
+        response: finalText,
+        toolsUsed,
+      };
+    } catch (error: any) {
+      this.logger.error(
+        '[processWithDeepSeek] Error procesando solicitud:',
+        error.message,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Procesa con Gemini (código original)
+   */
+  private async processWithGemini(userMessage: string): Promise<{
+    response: string;
+    toolsUsed: string[];
+  }> {
+    try {
+      this.logger.log(
+        `[processWithGemini] Procesando mensaje: "${userMessage.substring(0, 50)}..."`,
+      );
+
+      if (!this.geminiClient) {
+        throw new Error('Gemini client no inicializado');
+      }
+
+      const modelName = this.getModel();
+      const model = this.geminiClient.getGenerativeModel({ model: modelName });
 
       // Primera llamada: Gemini analiza el mensaje y decide qué tools usar
       const firstResponse = await model.generateContent({
@@ -267,7 +466,7 @@ export class GeminiService {
       const content = result.candidates?.[0]?.content;
 
       if (!content) {
-        this.logger.warn('[processUserRequest] No hay contenido en respuesta');
+        this.logger.warn('[processWithGemini] No hay contenido en respuesta');
         return {
           response: 'No se pudo procesar la solicitud.',
           toolsUsed: [],
@@ -279,7 +478,7 @@ export class GeminiService {
 
       // Si Gemini decidió ejecutar una tool
       if (content.parts.some((part) => 'functionCall' in part)) {
-        this.logger.log('[processUserRequest] Gemini decidió ejecutar tools');
+        this.logger.log('[processWithGemini] Gemini decidió ejecutar tools');
 
         const toolResults = [];
 
@@ -288,7 +487,7 @@ export class GeminiService {
           if ('functionCall' in part) {
             const functionCall = (part as any).functionCall;
             this.logger.log(
-              `[processUserRequest] Ejecutando tool: ${functionCall.name}`,
+              `[processWithGemini] Ejecutando tool: ${functionCall.name}`,
             );
 
             toolsUsed.push(functionCall.name);
@@ -307,7 +506,7 @@ export class GeminiService {
               });
             } catch (error: any) {
               this.logger.error(
-                `[processUserRequest] Error ejecutando tool ${functionCall.name}:`,
+                `[processWithGemini] Error ejecutando tool ${functionCall.name}:`,
                 error.message,
               );
 
@@ -325,7 +524,7 @@ export class GeminiService {
 
         // Segunda llamada: Gemini procesa resultados y genera respuesta final
         this.logger.log(
-          `[processUserRequest] Generando respuesta final con ${toolResults.length} resultados`,
+          `[processWithGemini] Generando respuesta final con ${toolResults.length} resultados`,
         );
 
         const finalResponse = await model.generateContent({
@@ -352,17 +551,15 @@ export class GeminiService {
           .map((part) => (part as any).text)
           .join('\n');
 
-        this.logger.log('[processUserRequest] Respuesta final generada');
+        this.logger.log('[processWithGemini] Respuesta final generada');
         return {
-          response:
-            finalText ||
-            'No se pudo generar una respuesta adecuada.',
+          response: finalText || 'No se pudo generar una respuesta adecuada.',
           toolsUsed,
         };
       }
 
       // Si Gemini no necesitó tools, retornar su respuesta directa
-      this.logger.log('[processUserRequest] Respuesta directa de Gemini');
+      this.logger.log('[processWithGemini] Respuesta directa de Gemini');
       const text = content.parts
         .filter((part) => 'text' in part)
         .map((part) => (part as any).text)
@@ -374,7 +571,7 @@ export class GeminiService {
       };
     } catch (error: any) {
       this.logger.error(
-        '[processUserRequest] Error procesando solicitud:',
+        '[processWithGemini] Error procesando solicitud:',
         error.message,
       );
       throw error;
@@ -382,42 +579,51 @@ export class GeminiService {
   }
 
   /**
-   * Health check - verifica que Gemini y MCP Server estén disponibles
+   * Health check - verifica que el proveedor de IA y MCP Server estén disponibles
    */
-  async healthCheck(): Promise<{ gemini: boolean; mcpServer: boolean }> {
+  async healthCheck(): Promise<{
+    provider: string;
+    ai: boolean;
+    mcpServer: boolean;
+  }> {
     const results = {
-      gemini: false,
+      provider: this.provider,
+      ai: false,
       mcpServer: false,
     };
 
-    // Verificar Gemini: verifica que la API key existe y que el cliente está inicializado
+    // Verificar proveedor de IA
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (apiKey && this.client) {
-        // Verificar que el cliente está correctamente configurado
-        results.gemini = true;
-        this.logger.debug('[healthCheck] Gemini: OK');
+      if (this.provider === 'deepseek') {
+        const apiKey = process.env.DEEPSEEK_API_KEY;
+        if (apiKey && this.deepseekClient) {
+          results.ai = true;
+          this.logger.debug('[healthCheck] DeepSeek: OK');
+        }
       } else {
-        this.logger.warn('[healthCheck] Gemini: API key no configurada o cliente no inicializado');
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (apiKey && this.geminiClient) {
+          results.ai = true;
+          this.logger.debug('[healthCheck] Gemini: OK');
+        }
       }
     } catch (error) {
-      this.logger.warn('[healthCheck] Gemini: Error en verificación', error);
+      this.logger.warn('[healthCheck] AI: Error en verificación', error);
     }
 
-    // Verificar MCP Server: verifica que responde en /health
+    // Verificar MCP Server
     try {
-      const response = await axios.get(
-        `${this.mcpServerUrl}/health`,
-        { 
-          timeout: 5000,
-          validateStatus: (status) => status >= 200 && status < 500,
-        },
-      );
+      const response = await axios.get(`${this.mcpServerUrl}/health`, {
+        timeout: 5000,
+        validateStatus: (status) => status >= 200 && status < 500,
+      });
       results.mcpServer = response.status === 200;
       if (results.mcpServer) {
         this.logger.debug('[healthCheck] MCP Server: OK');
       } else {
-        this.logger.warn(`[healthCheck] MCP Server: Respondió con status ${response.status}`);
+        this.logger.warn(
+          `[healthCheck] MCP Server: Respondió con status ${response.status}`,
+        );
       }
     } catch (error: any) {
       this.logger.warn(

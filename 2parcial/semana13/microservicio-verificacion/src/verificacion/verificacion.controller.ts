@@ -5,6 +5,7 @@ import {
   Body,
   Patch,
   Param,
+  Query,
 } from '@nestjs/common';
 import { VerificacionService } from './verificacion.service';
 import { CreateVerificacionDto } from './dto/create-verificacion.dto';
@@ -13,11 +14,70 @@ import { MessagePattern, EventPattern } from '@nestjs/microservices';
 
 /**
  * Controlador de Verificación
- * Expone endpoints para comunicación vía RabbitMQ
+ * Expone endpoints HTTP y para comunicación vía RabbitMQ
  */
-@Controller()
+@Controller('api/verificacion')
 export class VerificacionController {
   constructor(private readonly verificacionService: VerificacionService) {}
+
+  // =====================================================
+  // ENDPOINTS HTTP (para MCP Server y API Gateway)
+  // =====================================================
+
+  /**
+   * GET /api/verificacion/buscar
+   * Busca verificaciones por criterios
+   */
+  @Get('buscar')
+  async buscar(
+    @Query('id') id?: string,
+    @Query('arquitectoId') arquitectoId?: string,
+    @Query('estado') estado?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    return this.verificacionService.buscar({
+      id,
+      arquitectoId,
+      estado,
+      limit: limit ? parseInt(limit) : undefined,
+      offset: offset ? parseInt(offset) : undefined,
+    });
+  }
+
+  /**
+   * GET /api/verificacion/:id
+   * Obtiene una verificación por ID
+   */
+  @Get(':id')
+  async findOneHttp(@Param('id') id: string) {
+    return this.verificacionService.findOne(id);
+  }
+
+  /**
+   * POST /api/verificacion
+   * Crea una nueva verificación
+   */
+  @Post()
+  async createHttp(@Body() createDto: CreateVerificacionDto) {
+    return this.verificacionService.create(createDto);
+  }
+
+  /**
+   * PATCH /api/verificacion/:id
+   * Actualiza una verificación
+   */
+  @Patch(':id')
+  async updateHttp(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateVerificacionDto,
+  ) {
+    return this.verificacionService.update(id, updateDto);
+  }
+
+  // =====================================================
+  // ENDPOINTS RABBITMQ (existentes)
+  // =====================================================
 
   /**
    * Endpoint para crear verificación vía RabbitMQ
