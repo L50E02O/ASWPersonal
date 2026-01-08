@@ -36,20 +36,20 @@ const inputSchema: JSONSchema = {
   properties: {
     id: {
       type: 'string',
-      description: 'UUID de la verificación a buscar. Ej: 550e8400-e29b-41d4-a716-446655440000',
+      description: 'ID único (UUID) de la verificación. Úsalo cuando quieras buscar una verificación específica. Formato: 550e8400-e29b-41d4-a716-446655440000',
     },
     arquitecto_id: {
       type: 'string',
-      description: 'UUID del arquitecto asociado. Ej: 550e8400-e29b-41d4-a716-446655440000',
+      description: 'ID único (UUID) del arquitecto cuyas verificaciones quieres buscar. Úsalo para obtener todas las verificaciones asociadas a un arquitecto. Formato: 550e8400-e29b-41d4-a716-446655440000',
     },
     estado: {
       type: 'string',
-      description: 'Estado de la verificación: pendiente, verificado o rechazado',
+      description: 'Estado actual de la verificación: "pendiente" (aún no verificada), "verificado" (aprobada), o "rechazado" (denegada)',
       enum: ['pendiente', 'verificado', 'rechazado'],
     },
   },
   required: [],
-  description: 'Al menos uno de los parámetros debe ser proporcionado (id, arquitecto_id, estado)',
+  description: 'Debes proporcionar al menos uno de estos parámetros: id (para búsqueda exacta), arquitecto_id (para búsqueda por arquitecto), o estado (para filtrar por estado)',
   additionalProperties: false,
 };
 
@@ -94,8 +94,13 @@ const outputSchema: JSONSchema = {
 const execute = async (
   params: Record<string, unknown>
 ): Promise<Record<string, unknown>> => {
+  // Normalizar nombres de parámetros: aceptar tanto camelCase como snake_case
+  const id = params.id;
+  const arquitecto_id = params.arquitecto_id || params.arquitectoId;
+  const estado = params.estado;
+
   // Validar que al menos un parámetro sea proporcionado
-  if (!params.id && !params.arquitecto_id && !params.estado) {
+  if (!id && !arquitecto_id && !estado) {
     throw {
       code: JSONRPCErrorCode.VALIDATION_ERROR,
       message: 'Al menos uno de estos parámetros es requerido: id, arquitecto_id, estado',
@@ -103,29 +108,29 @@ const execute = async (
   }
 
   // Validar formato de UUIDs si se proporcionan
-  if (params.id && typeof params.id === 'string' && !isValidUUID(params.id)) {
+  if (id && typeof id === 'string' && !isValidUUID(id)) {
     throw {
       code: JSONRPCErrorCode.VALIDATION_ERROR,
-      message: `ID de verificación inválido: "${params.id}". Debe ser un UUID válido`,
+      message: `ID de verificación inválido: "${id}". Debe ser un UUID válido`,
     };
   }
 
-  if (params.arquitecto_id && typeof params.arquitecto_id === 'string' && !isValidUUID(params.arquitecto_id)) {
+  if (arquitecto_id && typeof arquitecto_id === 'string' && !isValidUUID(arquitecto_id)) {
     throw {
       code: JSONRPCErrorCode.VALIDATION_ERROR,
-      message: `ID de arquitecto inválido: "${params.arquitecto_id}". Debe ser un UUID válido`,
+      message: `ID de arquitecto inválido: "${arquitecto_id}". Debe ser un UUID válido`,
     };
   }
 
   // Validar y normalizar estado si se proporciona (aceptar mayúsculas y minúsculas)
   const estadosValidos = ['pendiente', 'verificado', 'rechazado'];
   let estadoNormalizado: string | undefined;
-  if (params.estado) {
-    estadoNormalizado = String(params.estado).toLowerCase();
+  if (estado) {
+    estadoNormalizado = String(estado).toLowerCase();
     if (!estadosValidos.includes(estadoNormalizado)) {
       throw {
         code: JSONRPCErrorCode.VALIDATION_ERROR,
-        message: `Estado inválido: "${params.estado}". Valores permitidos: ${estadosValidos.join(', ')}`,
+        message: `Estado inválido: "${estado}". Valores permitidos: ${estadosValidos.join(', ')}`,
       };
     }
   }
@@ -137,8 +142,8 @@ const execute = async (
 
     // Construir query string con los parámetros
     const queryParams = new URLSearchParams();
-    if (params.id) queryParams.append('id', String(params.id));
-    if (params.arquitecto_id) queryParams.append('arquitectoId', String(params.arquitecto_id));
+    if (id) queryParams.append('id', String(id));
+    if (arquitecto_id) queryParams.append('arquitectoId', String(arquitecto_id));
     if (estadoNormalizado) queryParams.append('estado', estadoNormalizado);
 
     if (queryParams.toString()) {
@@ -217,8 +222,12 @@ const execute = async (
 export const buscarVerificacionTool: MCPTool = {
   name: 'buscar_verificacion',
   description:
-    'Busca una verificación en la base de datos según criterios (ID, arquitecto_id o estado). ' +
-    'Retorna los datos de la verificación si existe.',
+    'Busca verificaciones en el sistema. Puedes buscar: ' +
+    '1) Por ID de verificación (búsqueda exacta), ' +
+    '2) Por ID de arquitecto (obtiene todas las verificaciones de ese arquitecto), ' +
+    '3) Por estado (pendiente, verificado o rechazado). ' +
+    'Usa esta herramienta para consultar verificaciones en la base de datos. ' +
+    'Al menos uno de los parámetros (id, arquitecto_id o estado) debe ser proporcionado.',
   inputSchema,
   outputSchema,
   execute,

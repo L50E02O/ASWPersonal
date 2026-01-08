@@ -90,7 +90,7 @@ const execute = async (
   try {
     // Construir URL del backend
     const baseUrl = process.env.VERIFICACION_SERVICE_URL || 'http://localhost:3002';
-    const url = `${baseUrl}/verificacion/${params.id}`;
+    const url = `${baseUrl}/api/verificacion/${params.id}`;
 
     console.log(`[es_pendiente] Obteniendo estado de verificación: ${params.id}`);
 

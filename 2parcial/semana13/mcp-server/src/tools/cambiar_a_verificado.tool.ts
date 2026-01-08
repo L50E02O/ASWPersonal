@@ -50,12 +50,12 @@ const inputSchema: JSONSchema = {
       description: 'Razón o comentario del cambio de estado (opcional). Ej: "Documentación completa"',
     },
     validar_pendiente: {
-      type: 'string',
-      description: 'Si es true, valida que esté en estado pendiente antes de cambiar (recomendado)',
+      type: 'boolean',
+      description: 'DEBE SER true (booleano). Confirma que ya verificaste que está en estado PENDIENTE usando "es_pendiente" primero. OBLIGATORIO por seguridad.',
     },
   },
-  required: ['id', 'moderador_id'],
-  description: 'El ID de la verificación y moderador_id son obligatorios',
+  required: ['id', 'validar_pendiente'],
+  description: 'IMPORTANTE: Debes proporcionar validar_pendiente: true. Primero verifica con "es_pendiente" que está en estado PENDIENTE, LUEGO llama a esta herramienta con validar_pendiente: true',
   additionalProperties: false,
 };
 
@@ -100,18 +100,23 @@ const outputSchema: JSONSchema = {
 const execute = async (
   params: Record<string, unknown>
 ): Promise<Record<string, unknown>> => {
+  // Validación OBLIGATORIA de seguridad
+  const validarPendienteValue = params.validar_pendiente;
+  if (validarPendienteValue !== true && validarPendienteValue !== 'true') {
+    throw {
+      code: JSONRPCErrorCode.VALIDATION_ERROR,
+      message: 'El parámetro "validar_pendiente" DEBE ser true (booleano). ' +
+        'Debes validar primero que la verificación está en estado PENDIENTE usando "es_pendiente" ' +
+        'ANTES de cambiarla a verificado. Este parámetro es obligatorio por seguridad. ' +
+        'Ejemplo correcto: cambiar_a_verificado(id="...", validar_pendiente=true)',
+    };
+  }
+
   // Validaciones de entrada
   if (!params.id || typeof params.id !== 'string') {
     throw {
       code: JSONRPCErrorCode.VALIDATION_ERROR,
       message: 'El parámetro "id" es requerido y debe ser una cadena (UUID)',
-    };
-  }
-
-  if (!params.moderador_id || typeof params.moderador_id !== 'string') {
-    throw {
-      code: JSONRPCErrorCode.VALIDATION_ERROR,
-      message: 'El parámetro "moderador_id" es requerido y debe ser una cadena (UUID)',
     };
   }
 
@@ -123,15 +128,8 @@ const execute = async (
     };
   }
 
-  if (!isValidUUID(params.moderador_id as string)) {
-    throw {
-      code: JSONRPCErrorCode.VALIDATION_ERROR,
-      message: `ID de moderador inválido: "${params.moderador_id}". Debe ser un UUID válido`,
-    };
-  }
-
-  // Verificación de seguridad: validar que esté pendiente
-  const validarPendiente = params.validar_pendiente === 'true' || params.validar_pendiente === true;
+  // Verificación de seguridad: siempre valida que esté pendiente
+  const validarPendiente = true;
 
   try {
     const baseUrl = process.env.VERIFICACION_SERVICE_URL || 'http://localhost:3002';
@@ -142,7 +140,7 @@ const execute = async (
       console.log(`[cambiar_a_verificado] Validando que verificación está en estado pendiente: ${params.id}`);
 
       try {
-        const getUrl = `${baseUrl}/verificacion/${params.id}`;
+        const getUrl = `${baseUrl}/api/verificacion/${params.id}`;
         const getResponse = await axios.get<any>(getUrl, {
           timeout,
           headers: { 'Content-Type': 'application/json', 'X-Request-Source': 'MCP-Server' },
@@ -171,13 +169,13 @@ const execute = async (
     // Preparar payload para el cambio de estado
     const updatePayload = {
       estado: 'verificado',
-      moderador_id: params.moderador_id,
+      // moderador_id: params.moderador_id,
       razon: params.razon || 'Cambio realizado por MCP Server',
       timestamp: new Date().toISOString(),
     };
 
     // Realizar solicitud PATCH/PUT al backend
-    const updateUrl = `${baseUrl}/verificacion/${params.id}`;
+    const updateUrl = `${baseUrl}/api/verificacion/${params.id}`;
     console.log(`[cambiar_a_verificado] Realizando cambio: ${updateUrl}`, updatePayload);
 
     const updateResponse = await axios.patch<CambiarEstadoResponse>(updateUrl, updatePayload, {
@@ -186,7 +184,7 @@ const execute = async (
         'Content-Type': 'application/json',
         'X-Request-Source': 'MCP-Server',
         'X-Operation': 'ESTADO_CHANGE',
-        'X-Moderator-Id': String(params.moderador_id),
+        // 'X-Moderator-Id': String(params.moderador_id),
       },
     });
 
@@ -195,7 +193,8 @@ const execute = async (
     return {
       success: 'true',
       verificacion: updateResponse.data.data,
-      message: `Verificación ${params.id} cambió a estado VERIFICADO. Moderador: ${params.moderador_id}`,
+      message: `Verificación ${params.id} cambió a estado VERIFICADO.`,
+      // message: `Verificación ${params.id} cambió a estado VERIFICADO. Moderador: ${params.moderador_id}`,
     };
   } catch (error) {
     const axiosError = error as AxiosError<CambiarEstadoResponse>;
@@ -245,10 +244,16 @@ const execute = async (
 export const cambiarAVerificadoTool: MCPTool = {
   name: 'cambiar_a_verificado',
   description:
-    'Actualiza el estado de una verificación a "verificado". ' +
-    'Esta es una operación de ESCRITURA. ' +
-    'Puede validar que esté en estado pendiente antes de cambiar (recomendado). ' +
-    'Registra auditoría con el ID del moderador.',
+    'Cambia el estado de una verificación a "verificado". ' +
+    'IMPORTANTE - FLUJO OBLIGATORIO: ' +
+    '1. Primero usa "es_pendiente" para verificar que la verificación está en estado PENDIENTE. ' +
+    '2. Solo después de confirmar que está pendiente, llama a esta herramienta. ' +
+    '3. Siempre proporciona validar_pendiente="true" (OBLIGATORIO). ' +
+    'Esta herramienta MODIFICA datos en la base de datos. ' +
+    'No cambies el estado a verificado si no está pendiente. ' +
+    'Ejemplos de flujo correcto: ' +
+    'Paso 1: es_pendiente(id) -> confirma que está pendiente ' +
+    'Paso 2: cambiar_a_verificado(id, validar_pendiente="true") -> cambia a verificado',
   inputSchema,
   outputSchema,
   execute,
