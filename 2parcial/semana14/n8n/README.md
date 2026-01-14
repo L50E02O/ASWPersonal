@@ -13,7 +13,7 @@ Este directorio contiene la configuración Docker para n8n, una herramienta de a
 ### Variables de Entorno
 - `N8N_BASIC_AUTH_USER`: Usuario para autenticación básica
 - `N8N_BASIC_AUTH_PASSWORD`: Contraseña para autenticación básica
-- `N8N_HOST`: Host donde escucha n8n (0.0.0.0 para todas las interfaces)
+- `N8N_HOST`: Host usado para generar URLs públicas (localhost para OAuth2)
 - `N8N_PORT`: Puerto donde escucha n8n (5678)
 - `N8N_PROTOCOL`: Protocolo HTTP
 

@@ -4,7 +4,7 @@
 
 - [ ] n8n está corriendo en Docker
 - [ ] 3 workflows importados en n8n
-- [ ] Credenciales configuradas (DeepSeek, Telegram, Google Sheets)
+- [ ] Credenciales configuradas (OpenRouter AI, Telegram, Google Sheets)
 - [ ] Workflows activados
 - [ ] URLs de webhooks obtenidas
 - [ ] Backend configurado con las URLs
@@ -44,13 +44,14 @@ docker-compose up -d
 
 ## PASO 3: Configurar Workflow 1 - Notificación Telegram 📱
 
-### 3.1 Configurar DeepSeek API Key
+### 3.1 Configurar OpenRouter AI API Key
 
 1. Abre el workflow **"Notificación Telegram - Eventos del Sistema"**
 2. Click en el nodo **"Set - Configuración"** (segundo nodo)
-3. En el campo `DEEPSEEK_API_KEY`:
-   - Reemplaza `TU_API_KEY_DE_DEEPSEEK_AQUI` con tu API key real
-   - Obtener API key: https://platform.deepseek.com/ → API Keys → Crear
+3. En el campo `OPENROUTER_API_KEY`:
+   - Reemplaza `TU_API_KEY_DE_OPENROUTER_AQUI` con tu API key real
+   - Obtener API key: https://openrouter.ai/keys → Create Key
+   - OpenRouter AI permite usar múltiples modelos de IA (DeepSeek, GPT, Claude, etc.)
 4. En el campo `TELEGRAM_CHAT_ID`:
    - Reemplaza `TU_CHAT_ID_DE_TELEGRAM_AQUI` con tu Chat ID
    - Obtener Chat ID: Envía mensaje a tu bot → Visita `https://api.telegram.org/bot<TU_BOT_TOKEN>/getUpdates` → Busca `"chat":{"id":123456789}`
@@ -171,12 +172,12 @@ docker-compose up -d
 
 ## PASO 5: Configurar Workflow 3 - Alertas ⚠️
 
-### 5.1 Configurar DeepSeek API Key
+### 5.1 Configurar OpenRouter AI API Key
 
 1. Abre el workflow **"Alertas - Evaluación de Condiciones Críticas"**
 2. Click en el nodo **"Set - Configuración"**
-3. En el campo `DEEPSEEK_API_KEY`:
-   - Reemplaza `TU_API_KEY_DE_DEEPSEEK_AQUI` con tu API key (la misma del Workflow 1)
+3. En el campo `OPENROUTER_API_KEY`:
+   - Reemplaza `TU_API_KEY_DE_OPENROUTER_AQUI` con tu API key (la misma del Workflow 1)
 4. **Guarda el workflow**
 
 ### 5.2 Obtener URL del Webhook
@@ -338,7 +339,7 @@ curl -X POST http://localhost:3000/arquitectos \
 
 1. ✅ n8n corriendo en Docker
 2. ✅ 3 workflows importados
-3. ✅ DeepSeek API Key configurada (Workflows 1 y 3)
+3. ✅ OpenRouter AI API Key configurada (Workflows 1 y 3)
 4. ✅ Telegram configurado (Workflow 1)
 5. ✅ Google Sheets configurado (Workflow 2)
 6. ✅ URLs de webhooks copiadas
@@ -352,7 +353,7 @@ curl -X POST http://localhost:3000/arquitectos \
 
 - **n8n**: http://localhost:5678
 - **API Gateway**: http://localhost:3000
-- **DeepSeek Platform**: https://platform.deepseek.com/
+- **OpenRouter AI**: https://openrouter.ai/
 - **Google Cloud Console**: https://console.cloud.google.com/
 - **Telegram BotFather**: @BotFather en Telegram
 

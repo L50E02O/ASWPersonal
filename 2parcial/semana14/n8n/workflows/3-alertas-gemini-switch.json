@@ -20,9 +20,9 @@
         "assignments": {
           "assignments": [
             {
-              "id": "deepseek-api-key",
-              "name": "DEEPSEEK_API_KEY",
-              "value": "TU_API_KEY_DE_DEEPSEEK_AQUI",
+              "id": "openrouter-api-key",
+              "name": "OPENROUTER_API_KEY",
+              "value": "TU_API_KEY_DE_OPENROUTER_AQUI",
               "type": "string"
             }
           ]
@@ -40,7 +40,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.deepseek.com/v1/chat/completions",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
@@ -51,31 +51,25 @@
             },
             {
               "name": "Authorization",
-              "value": "=Bearer {{$json.DEEPSEEK_API_KEY}}"
+              "value": "=Bearer {{$json.OPENROUTER_API_KEY}}"
+            },
+            {
+              "name": "HTTP-Referer",
+              "value": "http://localhost:5678"
+            },
+            {
+              "name": "X-Title",
+              "value": "n8n Workflow"
             }
           ]
         },
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "model",
-              "value": "deepseek-chat"
-            },
-            {
-              "name": "messages",
-              "value": "=[{\"role\":\"user\",\"content\":\"Analiza el siguiente evento del sistema y determina su nivel de urgencia. Evento: {{$json.body.evento}}. Datos: {{JSON.stringify($json.body.data)}}. Responde SOLO con una de estas opciones: 'CRITICA', 'ALTA', 'MEDIA', 'BAJA'. No incluyas texto adicional, solo la palabra.\"}]"
-            },
-            {
-              "name": "temperature",
-              "value": "0.3"
-            }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: 'deepseek/deepseek-chat', messages: [{ role: 'user', content: 'Analiza el siguiente evento del sistema y determina su nivel de urgencia. Evento: ' + ($json.body.evento || '') + '. Datos: ' + JSON.stringify($json.body.data || {}) + '. Responde SOLO con una de estas opciones: CRITICA, ALTA, MEDIA, BAJA. No incluyas texto adicional, solo la palabra.' }], temperature: 0.3 } }}",
         "options": {}
       },
-      "id": "deepseek-analisis",
-      "name": "DeepSeek - Análisis",
+      "id": "openrouter-analisis",
+      "name": "OpenRouter AI - Análisis",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [460, 300]
@@ -319,7 +313,7 @@
       "main": [
         [
           {
-            "node": "DeepSeek - Análisis",
+            "node": "OpenRouter AI - Análisis",
             "type": "main",
             "index": 0
           }
