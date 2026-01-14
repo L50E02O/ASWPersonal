@@ -1,0 +1,171 @@
+{
+  "name": "Notificación Telegram - Eventos del Sistema",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "notificacion",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-notificacion",
+      "name": "Webhook - Notificación",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "notificacion-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "openrouter-api-key",
+              "name": "OPENROUTER_API_KEY",
+              "value": "TU_API_KEY_DE_OPENROUTER_AQUI",
+              "type": "string"
+            },
+            {
+              "id": "telegram-chat-id",
+              "name": "TELEGRAM_CHAT_ID",
+              "value": "TU_CHAT_ID_DE_TELEGRAM_AQUI",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {
+          "keepOnlySet": false
+        }
+      },
+      "id": "set-config",
+      "name": "Set - Configuración",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$json.OPENROUTER_API_KEY}}"
+            },
+            {
+              "name": "HTTP-Referer",
+              "value": "http://localhost:5678"
+            },
+            {
+              "name": "X-Title",
+              "value": "n8n Workflow"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: 'deepseek/deepseek-chat', messages: [{ role: 'user', content: 'Genera un mensaje de notificación profesional en español para el siguiente evento: ' + ($json.body.evento || '') + '. Datos: ' + JSON.stringify($json.body.data || {}) + '. El mensaje debe ser conciso, claro y profesional.' }], temperature: 0.7 } }}",
+        "options": {}
+      },
+      "id": "openrouter-request",
+      "name": "HTTP Request - OpenRouter AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "operation": "sendMessage",
+        "chatId": "={{$json.TELEGRAM_CHAT_ID}}",
+        "text": "={{$json.body.choices[0].message.content}}",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "telegram-send",
+      "name": "Telegram - Enviar Mensaje",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [680, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-credentials",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"message\": \"Notificación enviada\", \"timestamp\": new Date().toISOString() } }}"
+      },
+      "id": "webhook-response",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - Notificación": {
+      "main": [
+        [
+          {
+            "node": "Set - Configuración",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Configuración": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - OpenRouter AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - OpenRouter AI": {
+      "main": [
+        [
+          {
+            "node": "Telegram - Enviar Mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram - Enviar Mensaje": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-01-15T00:00:00.000Z",
+  "versionId": "1"
+}

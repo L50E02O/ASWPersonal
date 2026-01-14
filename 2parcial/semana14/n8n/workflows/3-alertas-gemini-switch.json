@@ -1,0 +1,420 @@
+{
+  "name": "Alertas - Evaluación de Condiciones Críticas",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "alertas",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-alertas",
+      "name": "Webhook - Alertas",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "alertas-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "openrouter-api-key",
+              "name": "OPENROUTER_API_KEY",
+              "value": "TU_API_KEY_DE_OPENROUTER_AQUI",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {
+          "keepOnlySet": false
+        }
+      },
+      "id": "set-config",
+      "name": "Set - Configuración",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$json.OPENROUTER_API_KEY}}"
+            },
+            {
+              "name": "HTTP-Referer",
+              "value": "http://localhost:5678"
+            },
+            {
+              "name": "X-Title",
+              "value": "n8n Workflow"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: 'deepseek/deepseek-chat', messages: [{ role: 'user', content: 'Analiza el siguiente evento del sistema y determina su nivel de urgencia. Evento: ' + ($json.body.evento || '') + '. Datos: ' + JSON.stringify($json.body.data || {}) + '. Responde SOLO con una de estas opciones: CRITICA, ALTA, MEDIA, BAJA. No incluyas texto adicional, solo la palabra.' }], temperature: 0.3 } }}",
+        "options": {}
+      },
+      "id": "openrouter-analisis",
+      "name": "OpenRouter AI - Análisis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "urgencia-critica",
+                    "leftValue": "={{$json.body.choices[0].message.content.trim().toUpperCase()}}",
+                    "rightValue": "CRITICA",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "critica"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "urgencia-alta",
+                    "leftValue": "={{$json.body.choices[0].message.content.trim().toUpperCase()}}",
+                    "rightValue": "ALTA",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "alta"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "urgencia-media",
+                    "leftValue": "={{$json.body.choices[0].message.content.trim().toUpperCase()}}",
+                    "rightValue": "MEDIA",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "media"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "urgencia-baja",
+                    "leftValue": "={{$json.body.choices[0].message.content.trim().toUpperCase()}}",
+                    "rightValue": "BAJA",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "baja"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "switch-urgencia",
+      "name": "Switch - Urgencia",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "alerta-critica",
+              "name": "nivel",
+              "value": "CRITICA",
+              "type": "string"
+            },
+            {
+              "id": "alerta-mensaje",
+              "name": "mensaje",
+              "value": "=🚨 ALERTA CRÍTICA: Se requiere atención inmediata. Evento: {{$json.body.evento}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-critica",
+      "name": "Set - Crítica",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "alerta-alta",
+              "name": "nivel",
+              "value": "ALTA",
+              "type": "string"
+            },
+            {
+              "id": "alerta-mensaje",
+              "name": "mensaje",
+              "value": "=⚠️ ALERTA ALTA: Requiere atención prioritaria. Evento: {{$json.body.evento}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-alta",
+      "name": "Set - Alta",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "alerta-media",
+              "name": "nivel",
+              "value": "MEDIA",
+              "type": "string"
+            },
+            {
+              "id": "alerta-mensaje",
+              "name": "mensaje",
+              "value": "=ℹ️ ALERTA MEDIA: Requiere seguimiento. Evento: {{$json.body.evento}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-media",
+      "name": "Set - Media",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "alerta-baja",
+              "name": "nivel",
+              "value": "BAJA",
+              "type": "string"
+            },
+            {
+              "id": "alerta-mensaje",
+              "name": "mensaje",
+              "value": "=✅ ALERTA BAJA: Información registrada. Evento: {{$json.body.evento}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-baja",
+      "name": "Set - Baja",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [900, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"nivel_urgencia\": $json.nivel, \"mensaje\": $json.mensaje, \"timestamp\": new Date().toISOString() } }}"
+      },
+      "id": "webhook-response",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1120, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - Alertas": {
+      "main": [
+        [
+          {
+            "node": "Set - Configuración",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Configuración": {
+      "main": [
+        [
+          {
+            "node": "OpenRouter AI - Análisis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek - Análisis": {
+      "main": [
+        [
+          {
+            "node": "Switch - Urgencia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch - Urgencia": {
+      "main": [
+        [
+          {
+            "node": "Set - Crítica",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set - Alta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set - Media",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set - Baja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Crítica": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Alta": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Media": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Baja": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-01-15T00:00:00.000Z",
+  "versionId": "1"
+}

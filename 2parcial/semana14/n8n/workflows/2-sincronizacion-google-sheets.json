@@ -1,0 +1,135 @@
+{
+  "name": "Sincronización Google Sheets - Registro Administrativo",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sincronizacion",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-sincronizacion",
+      "name": "Webhook - Sincronización",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "sincronizacion-webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "sheets-doc-id",
+              "name": "GOOGLE_SHEETS_DOCUMENT_ID",
+              "value": "TU_GOOGLE_SHEETS_DOCUMENT_ID_AQUI",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {
+          "keepOnlySet": false
+        }
+      },
+      "id": "set-config",
+      "name": "Set - Configuración",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{$json.GOOGLE_SHEETS_DOCUMENT_ID}}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Registro Eventos",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Evento": "={{$json.body.evento}}",
+            "Timestamp": "={{$json.body.timestamp}}",
+            "Tipo": "={{$json.body.data.arquitecto ? 'Arquitecto' : $json.body.data.verificacion ? 'Verificación' : 'Desconocido'}}",
+            "ID": "={{$json.body.data.arquitecto?.id || $json.body.data.verificacion?.id || 'N/A'}}",
+            "Datos JSON": "={{JSON.stringify($json.body.data)}}"
+          }
+        },
+        "options": {
+          "useAppend": true
+        }
+      },
+      "id": "google-sheets-append",
+      "name": "Google Sheets - Append",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [460, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-credentials",
+          "name": "Google Sheets Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"message\": \"Registro sincronizado en Google Sheets\", \"timestamp\": new Date().toISOString() } }}"
+      },
+      "id": "webhook-response",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - Sincronización": {
+      "main": [
+        [
+          {
+            "node": "Set - Configuración",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Configuración": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets - Append",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets - Append": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-01-15T00:00:00.000Z",
+  "versionId": "1"
+}
